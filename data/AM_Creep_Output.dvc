@@ -1,0 +1,6 @@
+outs:
+- md5: ea764e9cd4d1d96bca2d08c01a2dab66.dir
+  size: 12974178
+  nfiles: 40
+  hash: md5
+  path: AM_Creep_Output
