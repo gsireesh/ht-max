@@ -8,6 +8,9 @@ import logging
 import warnings
 from pathlib import Path
 from typing import Dict, List, Union
+# Import the NER class from NER.py if it's in a separate file
+from papermage_components.NER import MatIE
+
 
 from papermage.magelib import (
     AbstractsFieldName,
@@ -54,7 +57,7 @@ from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 from papermage.recipes.recipe import Recipe
 from papermage.utils.annotate import group_by
 
-from papermage_components.scispacy_sentence_predictor import SciSpacySentencePredictor
+from papermage_components.scispacy_sentence_predictor_v2 import SciSpacySentencePredictor
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -82,8 +85,13 @@ class MaterialsRecipe(Recipe):
         ivila_predictor_path: str = "allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
         bio_roberta_predictor_path: str = "allenai/vila-roberta-large-s2vl-internal",
         svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
-        scispacy_model: str = "en_core_sci_md",
+        scispacy_model: str = "en_core_sci_scibert",
         dpi: int = 72,
+        NER_model_dir: str = "", # the directory of the NER model 
+        vocab_dir: str = "", # the directory of the vocabulary 
+        output_folder: str = "", # the directory of the vocabulary
+        gpu_id: str = "0", 
+        decode_script: str = "" # the decode module
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
@@ -91,7 +99,6 @@ class MaterialsRecipe(Recipe):
         self.logger.info("Instantiating recipe...")
         self.parser = PDFPlumberParser()
         self.rasterizer = PDF2ImageRasterizer()
-
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.word_predictor = SVMWordPredictor.from_path(svm_word_predictor_path)
@@ -105,19 +112,28 @@ class MaterialsRecipe(Recipe):
             entity_name="tokens",
             context_name="pages",
         )
-        self.sent_predictor = SciSpacySentencePredictor(model_name=scispacy_model)
+        self.sent_predictor = SciSpacySentencePredictor(model_name=scispacy_model, NER_model_dir = NER_model_dir, 
+                                                        vocab_dir = vocab_dir,output_folder = output_folder, 
+                                                        gpu_id = gpu_id, decode_script = decode_script)
+        # self.NER = MatIE(NER_model_dir = NER_model_dir, vocab_dir = vocab_dir,
+        #         output_folder = output_folder, gpu_id = gpu_id, decode_script = decode_script)
+
         self.logger.info("Finished instantiating recipe")
 
     def from_pdf(self, pdf: Path) -> Document:
         self.logger.info("Parsing document...")
+        print('pdf',pdf)
         doc = self.parser.parse(input_pdf_path=pdf)
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
         doc.annotate_images(images=list(images))
         self.rasterizer.attach_images(images=images, doc=doc)
+        self.sent_predictor.curr_file = pdf.split("/")[-1][:-4]
+        
         return self.from_doc(doc=doc)
 
+    
     def from_doc(self, doc: Document) -> Document:
         self.logger.info("Predicting words...")
         words = self.word_predictor.predict(doc=doc)
@@ -164,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, help="Path to output JSON file.")
     args = parser.parse_args()
 
-    recipe = CoreRecipe()
+    recipe = MaterialsRecipe()
     doc = recipe.from_pdf(pdf=args.pdf)
     with open(args.output, "w") as f:
         json.dump(doc.to_json(), f, indent=2)
