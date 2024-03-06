@@ -55,7 +55,7 @@ from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 from papermage.recipes.recipe import Recipe
 from papermage.utils.annotate import group_by
 
-from papermage_components.scispacy_sentence_predictor import SciSpacySentencePredictor
+from papermage_components.reading_order_predictor import GrobidReadingOrderPredictor
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -83,37 +83,40 @@ class MaterialsRecipe(Recipe):
         ivila_predictor_path: str = "allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
         bio_roberta_predictor_path: str = "allenai/vila-roberta-large-s2vl-internal",
         svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
-        scispacy_model: str = "en_core_sci_md",
+        grobid_server_url: str = "http://himalayan.lti.cs.cmu.edu:8070",
+        xml_out_dir: str = "data/grobid_xml",
         dpi: int = 72,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
 
         self.logger.info("Instantiating recipe...")
-        self.grobid_parser = GrobidFullParser()
+        self.grobid_parser = GrobidFullParser(grobid_server_url=grobid_server_url,
+                                              check_server=True)
         self.pdfplumber_parser = PDFPlumberParser()
         self.rasterizer = PDF2ImageRasterizer()
+        self.xml_out_dir = xml_out_dir
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.word_predictor = SVMWordPredictor.from_path(svm_word_predictor_path)
 
-        self.publaynet_block_predictor = LPEffDetPubLayNetBlockPredictor.from_pretrained()
-        self.ivila_predictor = IVILATokenClassificationPredictor.from_pretrained(
-            ivila_predictor_path
-        )
-        self.bio_roberta_predictor = HFBIOTaggerPredictor.from_pretrained(
-            bio_roberta_predictor_path,
-            entity_name="tokens",
-            context_name="pages",
-        )
+        # self.publaynet_block_predictor = LPEffDetPubLayNetBlockPredictor.from_pretrained()
+        # self.ivila_predictor = IVILATokenClassificationPredictor.from_pretrained(
+        #     ivila_predictor_path
+        # )
+        # self.bio_roberta_predictor = HFBIOTaggerPredictor.from_pretrained(
+        #     bio_roberta_predictor_path,
+        #     entity_name="tokens",
+        #     context_name="pages",
+        # )
         self.sent_predictor = PysbdSentencePredictor()
         self.logger.info("Finished instantiating recipe")
 
     def from_pdf(self, pdf: Path) -> Document:
         self.logger.info("Parsing document...")
         doc = self.pdfplumber_parser.parse(input_pdf_path=pdf)
-        doc = self.grobid_parser.parse(pdf, doc)
+        doc = self.grobid_parser.parse(pdf, doc, xml_out_dir=self.xml_out_dir)
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
@@ -130,31 +133,36 @@ class MaterialsRecipe(Recipe):
         sentences = self.sent_predictor.predict(doc=doc)
         doc.annotate_layer(name=SentencesFieldName, entities=sentences)
 
-        self.logger.info("Predicting blocks...")
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            blocks = self.publaynet_block_predictor.predict(doc=doc)
-        doc.annotate_layer(name=BlocksFieldName, entities=blocks)
+        # self.logger.info("Predicting blocks...")
+        # with warnings.catch_warnings():
+        #     warnings.simplefilter("ignore")
+        #     blocks = self.publaynet_block_predictor.predict(doc=doc)
+        # doc.annotate_layer(name=BlocksFieldName, entities=blocks)
 
-        self.logger.info("Predicting vila...")
-        vila_entities = self.ivila_predictor.predict(doc=doc)
-        doc.annotate_layer(name="vila_entities", entities=vila_entities)
+        # self.logger.info("Predicting vila...")
+        # vila_entities = self.ivila_predictor.predict(doc=doc)
+        # doc.annotate_layer(name="vila_entities", entities=vila_entities)
+        #
+        # for entity in doc.vila_entities:
+        #     entity.boxes = [
+        #         Box.create_enclosing_box(
+        #             [
+        #                 b
+        #                 for t in doc.intersect_by_span(entity, name=TokensFieldName)
+        #                 for b in t.boxes
+        #             ]
+        #         )
+        #     ]
+        #     entity.text = make_text(entity=entity, document=doc)
+        # preds = group_by(
+        #     entities=vila_entities, metadata_field="label", metadata_values_map=VILA_LABELS_MAP
+        # )
+        # doc.annotate(*preds)
 
-        for entity in vila_entities:
-            entity.boxes = [
-                Box.create_enclosing_box(
-                    [
-                        b
-                        for t in doc.intersect_by_span(entity, name=TokensFieldName)
-                        for b in t.boxes
-                    ]
-                )
-            ]
-            entity.text = make_text(entity=entity, document=doc)
-        preds = group_by(
-            entities=vila_entities, metadata_field="label", metadata_values_map=VILA_LABELS_MAP
-        )
-        doc.annotate(*preds)
+        self.logger.info("Predicting Reading Order...")
+        # reading_order_entities = self.reading_order_predictor.predict(input_pdf_path=pdf, doc=doc)
+        # doc.annotate_layer(name="section_ordering", entities=reading_order_entities)
+
         return doc
 
 
