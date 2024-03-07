@@ -15,7 +15,7 @@ from papermage.utils.merge import cluster_and_merge_neighbor_spans
 
 HighlightsFieldName = "annotation_highlights"
 
-FITZ_HIGHLIGHT_FIELD_NAME = "Highlights"
+FITZ_HIGHLIGHT_FIELD_NAME = "Highlight"
 ANNOTATION_TYPE_KEY = "annotation_type"
 B_VALUE_TO_TYPE = {
     1.0: "structure",
@@ -29,7 +29,7 @@ B_VALUE_TO_TYPE = {
 
 def convert_rect_to_papermage(rect, page, page_number):
     left = rect[0] / page.rect.width
-    top = rect[1] / page.rect.width
+    top = rect[1] / page.rect.height
     width = (rect[2] - rect[0]) / page.rect.width
     height = (rect[3] - rect[1]) / page.rect.height
 
@@ -38,7 +38,7 @@ def convert_rect_to_papermage(rect, page, page_number):
 
 def get_highlight_spans(boxes, doc):
     intersecting_tokens = doc.intersect_by_box(query=Entity(boxes=boxes), name="tokens")
-    token_spans = itertools.chain((token.spans for token in intersecting_tokens))
+    token_spans = list(itertools.chain(*(token.spans for token in intersecting_tokens)))
     clustered_token_spans = cluster_and_merge_neighbor_spans(token_spans)
     return clustered_token_spans.merged
 
@@ -51,6 +51,7 @@ class FitzHighlightParser(Parser):
         pdf_filename = os.path.basename(input_pdf_path)
         annotated_filename = os.path.join(self.annotated_pdf_directory, f"annotated_{pdf_filename}")
 
+        highlight_entities = []
         with fitz.open(annotated_filename) as pdf:
             for page_number, page in enumerate(pdf):
                 for annotation in page.annots():
@@ -68,18 +69,18 @@ class FitzHighlightParser(Parser):
                         entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
                     else:
                         for j in range(0, len(vertices), 4):
-                            box = fitz.Quad(vertices[j, j + 4]).rect
+                            box = fitz.Quad(vertices[j : j + 4]).rect
                             entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
 
                     # get annotation color, and then type
                     color = annotation.colors["stroke"]
-                    annotation_type = B_VALUE_TO_TYPE[color]
+                    annotation_type = B_VALUE_TO_TYPE[color[2]]
+
+                    entity_spans = get_highlight_spans(entity_boxes, doc)
 
                     entity_metadata = Metadata(
                         **{"annotation_color": color, ANNOTATION_TYPE_KEY: annotation_type}
                     )
-
-                    entity_spans = get_highlight_spans(entity_boxes, doc)
 
                     highlight_entity = Entity(
                         spans=entity_spans,
@@ -87,5 +88,8 @@ class FitzHighlightParser(Parser):
                         images=None,
                         metadata=entity_metadata,
                     )
+                    highlight_entities.append(highlight_entity)
+
+        doc.annotate_layer(HighlightsFieldName, highlight_entities)
 
         return doc
