@@ -43,6 +43,48 @@ def get_highlight_spans(boxes, doc):
     return clustered_token_spans.merged
 
 
+def get_highlight_entities_from_pdf(pdf_filename: str) -> list[Entity]:
+    highlight_entities = []
+    with fitz.open(pdf_filename) as pdf:
+        for page_number, page in enumerate(pdf):
+            for annotation in page.annots():
+                if annotation.type[1] != FITZ_HIGHLIGHT_FIELD_NAME:
+                    continue
+
+                # get annotation boxes
+                entity_boxes = []
+                vertices = annotation.vertices
+
+                assert len(vertices) % 4 == 0
+
+                if len(vertices) == 4:
+                    box = fitz.Quad(vertices).rect
+                    entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
+                else:
+                    for j in range(0, len(vertices), 4):
+                        box = fitz.Quad(vertices[j : j + 4]).rect
+                        entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
+
+                # get annotation color, and then type
+                color = annotation.colors["stroke"]
+                annotation_type = B_VALUE_TO_TYPE[color[2]]
+
+                entity_spans = get_highlight_spans(entity_boxes, doc)
+
+                entity_metadata = Metadata(
+                    **{"annotation_color": color, ANNOTATION_TYPE_KEY: annotation_type}
+                )
+
+                highlight_entity = Entity(
+                    spans=entity_spans,
+                    boxes=entity_boxes,
+                    images=None,
+                    metadata=entity_metadata,
+                )
+                highlight_entities.append(highlight_entity)
+    return highlight_entities
+
+
 class FitzHighlightParser(Parser):
     def __init__(self, annotated_pdf_directory: str):
         self.annotated_pdf_directory = annotated_pdf_directory
@@ -51,44 +93,7 @@ class FitzHighlightParser(Parser):
         pdf_filename = os.path.basename(input_pdf_path)
         annotated_filename = os.path.join(self.annotated_pdf_directory, f"annotated_{pdf_filename}")
 
-        highlight_entities = []
-        with fitz.open(annotated_filename) as pdf:
-            for page_number, page in enumerate(pdf):
-                for annotation in page.annots():
-                    if annotation.type[1] != FITZ_HIGHLIGHT_FIELD_NAME:
-                        continue
-
-                    # get annotation boxes
-                    entity_boxes = []
-                    vertices = annotation.vertices
-
-                    assert len(vertices) % 4 == 0
-
-                    if len(vertices) == 4:
-                        box = fitz.Quad(vertices).rect
-                        entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
-                    else:
-                        for j in range(0, len(vertices), 4):
-                            box = fitz.Quad(vertices[j : j + 4]).rect
-                            entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
-
-                    # get annotation color, and then type
-                    color = annotation.colors["stroke"]
-                    annotation_type = B_VALUE_TO_TYPE[color[2]]
-
-                    entity_spans = get_highlight_spans(entity_boxes, doc)
-
-                    entity_metadata = Metadata(
-                        **{"annotation_color": color, ANNOTATION_TYPE_KEY: annotation_type}
-                    )
-
-                    highlight_entity = Entity(
-                        spans=entity_spans,
-                        boxes=entity_boxes,
-                        images=None,
-                        metadata=entity_metadata,
-                    )
-                    highlight_entities.append(highlight_entity)
+        highlight_entities = get_highlight_entities_from_pdf(annotated_filename)
 
         doc.annotate_layer(HighlightsFieldName, highlight_entities)
 
