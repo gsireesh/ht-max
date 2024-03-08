@@ -33,25 +33,24 @@ def parse_papers_to_json(input_folder: str, output_folder: str):
         if pdf_filename.lower().endswith(".pdf")
     ]
     for paper in paper_list:
-        for paper in paper_list:
-            paper_title = get_doc_title(paper)
-            paper_sentences = [sentence.text.replace("\n", " ") for sentence in paper.sentences]
-            paper_abstract = paper.abstracts[0].text
-            section_text = {}
+        paper_title = get_doc_title(paper)
+        paper_sentences = [sentence.text.replace("\n", " ") for sentence in paper.sentences]
+        paper_abstract = paper.abstracts[0].text
+        section_text = {}
 
-            with open(
-                os.path.join(output_folder, paper_title.replace(" ", "_") + ".json"), "w"
-            ) as f:
-                json.dump(
-                    {
-                        "title": paper_title,
-                        "abstract": paper_abstract,
-                        "sentences": paper_sentences,
-                        "section_text": section_text,
-                    },
-                    f,
-                    indent=4,
-                )
+        with open(
+            os.path.join(output_folder, paper_title.replace(" ", "_") + ".json"), "w"
+        ) as f:
+            json.dump(
+                {
+                    "title": paper_title,
+                    "abstract": paper_abstract,
+                    "sentences": paper_sentences,
+                    "section_text": section_text,
+                },
+                f,
+                indent=4,
+            )
 
 
 if __name__ == "__main__":
