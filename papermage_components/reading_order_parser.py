@@ -65,10 +65,17 @@ def get_coords_by_section(
     coords_by_section = {}
     for div in section_divs:
         title_element = div.find("./tei:head", NS)
-        title_text = title_element.text
-        title_coords = title_element.attrib["coords"]
+        if title_element is not None:
+            title_text = title_element.text
+            title_coords = title_element.attrib["coords"]
+            all_coords = [title_coords]
+        else:
+            title_text = "Unknown Section"
+            all_coords = []
+
         sentence_elements = div.findall(".//tei:s[@coords]", NS)
-        all_coords = [title_coords] + [e.attrib["coords"] for e in sentence_elements]
+
+        all_coords = all_coords + [e.attrib["coords"] for e in sentence_elements]
         section_boxes = list(
             itertools.chain(
                 *[parse_grobid_coords(coord_string, page_dimensions) for coord_string in all_coords]
@@ -147,7 +154,7 @@ class GrobidReadingOrderParser(Parser):
             "sleep_time": 5,
             "timeout": 60,
             "coordinates": sorted(
-                set((*GROBID_VILA_MAP.keys(), "s", "ref", "body", "item", "persName"))
+                {*GROBID_VILA_MAP.keys(), "s", "ref", "body", "item", "persName"}
             ),
             **grobid_config,
         }

@@ -3,6 +3,7 @@ import logging
 import os
 
 import fire
+from tqdm.auto import tqdm
 
 from papermage import Document
 from papermage_components.materials_recipe import MaterialsRecipe
@@ -18,7 +19,7 @@ def get_doc_title(document: Document):
     return document_title
 
 
-def parse_papers_to_json(input_folder: str, output_folder: str):
+def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_present: bool = False):
     recipe = MaterialsRecipe()
 
     pdf_list = [
@@ -27,18 +28,16 @@ def parse_papers_to_json(input_folder: str, output_folder: str):
         if pdf_filename.lower().endswith(".pdf")
     ]
 
-    paper_list = [
-        recipe.from_pdf(os.path.join(input_folder, pdf_filename)) for pdf_filename in pdf_list
-    ]
-    for paper, pdf_filename in zip(paper_list, pdf_list):
-        with open(
-            os.path.join(output_folder, pdf_filename.lower().replace(".pdf", ".json")), "w"
-        ) as f:
-            json.dump(
-                paper.to_json(),
-                f,
-                indent=4,
-            )
+    for pdf_filename in tqdm(pdf_list):
+        output_path = os.path.join(output_folder, pdf_filename.lower().replace(".pdf", ".json"))
+
+        if os.path.exists(output_path) and not overwrite_if_present:
+            print(f"File {output_path} already exists! Skipping parsing.")
+            continue
+
+        parsed_paper = recipe.from_pdf(os.path.join(input_folder, pdf_filename))
+        with open(output_path, "w") as f:
+            json.dump(parsed_paper.to_json(), f, indent=4)
 
 
 if __name__ == "__main__":
