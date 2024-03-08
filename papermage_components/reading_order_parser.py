@@ -2,35 +2,25 @@
 @gsireesh
 """
 
+from collections import defaultdict
 import itertools
 import json
 import os
-import re
-import warnings
-import xml.etree.ElementTree as et
-from collections import defaultdict
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Optional
+import xml.etree.ElementTree as et
 
-import numpy as np
 from grobid_client.grobid_client import GrobidClient
 
-
 from papermage.magelib import (
-    BlocksFieldName,
-    Box,
     Document,
     Entity,
     Metadata,
-    PagesFieldName,
-    RowsFieldName,
-    Span,
-    TokensFieldName,
 )
 from papermage.magelib.box import Box
-from papermage.parsers.parser import Parser
 from papermage.parsers.grobid_parser import GROBID_VILA_MAP
-from papermage.utils.merge import cluster_and_merge_neighbor_spans
+from papermage.parsers.parser import Parser
+
 
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
@@ -188,13 +178,13 @@ class GrobidReadingOrderParser(Parser):
         )
         assert xml is not None, "Grobid returned no XML"
 
-        # if self.xml_out_dir:
-        #     os.makedirs(self.xml_out_dir, exist_ok=True)
-        #     xml_file = os.path.join(
-        #         self.xml_out_dir, os.path.basename(input_pdf_path).replace(".pdf", ".xml")
-        #     )
-        #     with open(xml_file, "w") as f_out:
-        #         f_out.write(xml)
+        if self.xml_out_dir:
+            os.makedirs(self.xml_out_dir, exist_ok=True)
+            xml_file = os.path.join(
+                self.xml_out_dir, os.path.basename(input_pdf_path).replace(".pdf", ".xml")
+            )
+            with open(xml_file, "w") as f_out:
+                f_out.write(xml)
 
         xml_root = et.fromstring(xml)
         page_dimensions = get_page_dimensions(xml_root)
