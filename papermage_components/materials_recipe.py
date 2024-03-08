@@ -55,9 +55,8 @@ from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 from papermage.recipes.recipe import Recipe
 from papermage.utils.annotate import group_by
 
+from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
-
-from papermage_components.scispacy_sentence_predictor import SciSpacySentencePredictor
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -87,14 +86,18 @@ class MaterialsRecipe(Recipe):
         svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
         scispacy_model: str = "en_core_sci_md",
         annotated_pdf_directory="data/AM_Creep_Papers_Annotated_1/",
+        grobid_server_url: str = "http://himalayan.lti.cs.cmu.edu:8070",
+        xml_out_dir: str = "data/grobid_xml",
         dpi: int = 72,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
 
         self.logger.info("Instantiating recipe...")
-        # self.grobid_parser = GrobidFullParser()
         self.pdfplumber_parser = PDFPlumberParser()
+        self.grobid_order_parser = GrobidReadingOrderParser(
+            grobid_server_url, check_server=True, xml_out_dir=xml_out_dir
+        )
         self.highlight_parser = FitzHighlightParser(annotated_pdf_directory)
         self.rasterizer = PDF2ImageRasterizer()
 
@@ -117,8 +120,12 @@ class MaterialsRecipe(Recipe):
     def from_pdf(self, pdf: Path) -> Document:
         self.logger.info("Parsing document...")
         doc = self.pdfplumber_parser.parse(input_pdf_path=pdf)
-        # doc = self.grobid_parser.parse(pdf, doc)
+        doc = self.grobid_order_parser.parse(
+            pdf,
+            doc,
+        )
         doc = self.highlight_parser.parse(pdf, doc)
+
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
@@ -172,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, help="Path to output JSON file.")
     args = parser.parse_args()
 
-    recipe = CoreRecipe()
+    recipe = MaterialsRecipe()
     doc = recipe.from_pdf(pdf=args.pdf)
     with open(args.output, "w") as f:
         json.dump(doc.to_json(), f, indent=2)
