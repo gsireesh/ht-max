@@ -55,7 +55,7 @@ from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 from papermage.recipes.recipe import Recipe
 from papermage.utils.annotate import group_by
 
-from papermage_components.reading_order_predictor import GrobidReadingOrderParser
+from papermage_components.reading_order_parser import GrobidReadingOrderParser
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -102,15 +102,15 @@ class MaterialsRecipe(Recipe):
             warnings.simplefilter("ignore")
             self.word_predictor = SVMWordPredictor.from_path(svm_word_predictor_path)
 
-        # self.publaynet_block_predictor = LPEffDetPubLayNetBlockPredictor.from_pretrained()
-        # self.ivila_predictor = IVILATokenClassificationPredictor.from_pretrained(
-        #     ivila_predictor_path
-        # )
-        # self.bio_roberta_predictor = HFBIOTaggerPredictor.from_pretrained(
-        #     bio_roberta_predictor_path,
-        #     entity_name="tokens",
-        #     context_name="pages",
-        # )
+        self.publaynet_block_predictor = LPEffDetPubLayNetBlockPredictor.from_pretrained()
+        self.ivila_predictor = IVILATokenClassificationPredictor.from_pretrained(
+            ivila_predictor_path
+        )
+        self.bio_roberta_predictor = HFBIOTaggerPredictor.from_pretrained(
+            bio_roberta_predictor_path,
+            entity_name="tokens",
+            context_name="pages",
+        )
         self.sent_predictor = PysbdSentencePredictor()
         self.logger.info("Finished instantiating recipe")
 
@@ -137,31 +137,31 @@ class MaterialsRecipe(Recipe):
         sentences = self.sent_predictor.predict(doc=doc)
         doc.annotate_layer(name=SentencesFieldName, entities=sentences)
 
-        # self.logger.info("Predicting blocks...")
-        # with warnings.catch_warnings():
-        #     warnings.simplefilter("ignore")
-        #     blocks = self.publaynet_block_predictor.predict(doc=doc)
-        # doc.annotate_layer(name=BlocksFieldName, entities=blocks)
+        self.logger.info("Predicting blocks...")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            blocks = self.publaynet_block_predictor.predict(doc=doc)
+        doc.annotate_layer(name=BlocksFieldName, entities=blocks)
 
-        # self.logger.info("Predicting vila...")
-        # vila_entities = self.ivila_predictor.predict(doc=doc)
-        # doc.annotate_layer(name="vila_entities", entities=vila_entities)
-        #
-        # for entity in doc.vila_entities:
-        #     entity.boxes = [
-        #         Box.create_enclosing_box(
-        #             [
-        #                 b
-        #                 for t in doc.intersect_by_span(entity, name=TokensFieldName)
-        #                 for b in t.boxes
-        #             ]
-        #         )
-        #     ]
-        #     entity.text = make_text(entity=entity, document=doc)
-        # preds = group_by(
-        #     entities=vila_entities, metadata_field="label", metadata_values_map=VILA_LABELS_MAP
-        # )
-        # doc.annotate(*preds)
+        self.logger.info("Predicting vila...")
+        vila_entities = self.ivila_predictor.predict(doc=doc)
+        doc.annotate_layer(name="vila_entities", entities=vila_entities)
+
+        for entity in doc.vila_entities:
+            entity.boxes = [
+                Box.create_enclosing_box(
+                    [
+                        b
+                        for t in doc.intersect_by_span(entity, name=TokensFieldName)
+                        for b in t.boxes
+                    ]
+                )
+            ]
+            entity.text = make_text(entity=entity, document=doc)
+        preds = group_by(
+            entities=vila_entities, metadata_field="label", metadata_values_map=VILA_LABELS_MAP
+        )
+        doc.annotate(*preds)
         return doc
 
 
