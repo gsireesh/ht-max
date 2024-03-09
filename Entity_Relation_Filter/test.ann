@@ -1,0 +1,111 @@
+T1	Synthesis 2277 2299	additive manufacturing
+T2	Synthesis 2302 2304	AM
+T3	Result 2313 2322	increases
+T4	Phenomenon 2393 2409	creep be- havior
+T5	Number 2430 2437	200–450
+T6	Amount_Unit 2438 2441	° C
+T7	Environment 2442 2459	temperature range
+T8	Material 2469 2478	Al alloys
+T9	Descriptor 2512 2518	denser
+T10	Descriptor 2531 2542	ex- pensive
+T11	Material 2543 2549	steels
+T12	Material 2554 2563	Ti alloys
+T13	MStructure 1837 1845	Pathways
+T14	Result 1889 1898	identiﬁed
+T15	Property 2576 2593	creep resistances
+T16	Descriptor 2603 2612	stud- ied
+T17	Descriptor 2613 2615	AM
+T18	Material 2616 2625	Al alloys
+T19	Result 2630 2643	not promising
+T20	Result 1340 1349	excellent
+T21	Property 1350 1366	creep resistance
+T22	Descriptor 1379 1383	cast
+T23	Environment 1384 1401	high- temperature
+T24	Material 1402 1417	aluminum alloys
+T25	Number 1421 1430	30 0–40 0
+T26	Amount_Unit 1431 1435	° C.
+T27	Property 1440 1456	creep resistance
+T28	Descriptor 1490 1494	high
+T29	Property 1495 1510	volume fraction
+T30	Number 1513 1517	∼ 35
+T31	Amount_Unit 1518 1519	%
+T32	Descriptor 1525 1534	submicron
+T33	Phase 1535 1569	intermetallic strengthening phases
+T34	Phenomenon 1580 1600	coarsening-resistant
+T35	Number 1605 1616	hundreds of
+T36	Amount_Unit 1617 1622	hours
+T37	Number 1626 1629	350
+T38	Amount_Unit 1630 1634	° C.
+T39	Synthesis 1671 1693	additive manufacturing
+T40	Property 1736 1751	creep-resistant
+T41	Material 1752 1767	aluminum alloys
+T42	Number 1805 1812	250–400
+T43	Amount_Unit 1813 1816	° C
+T44	Environment 1817 1834	temperature range
+T45	Descriptor 1264 1274	additively
+T46	Descriptor 1275 1289	manu- factured
+T47	Material 1290 1311	Al-10.5Ce-3.1Ni-1.2Mn
+T48	Property 1312 1316	wt .
+T49	Phenomenon 2014 2031	creep deformation
+T50	Material 2035 2043	aluminum
+T51	Material 2046 2048	Al
+T52	Descriptor 2186 2201	relatively high
+T53	Property 2202 2209	thermal
+T54	Property 2214 2239	electrical conductivities
+T55	Number 29 35	117699
+T56	MStructure 36 50	Contents lists
+T57	Property 167 182	creep-resistant
+T58	Descriptor 183 206	additively manufactured
+T59	Material 207 224	Al-Ce-Ni-Mn alloy
+T60	Descriptor 235 245	Richard A.
+T61	Material 246 251	Michi
+T62	Material 260 271	Kevin Sisco
+T63	Material 276 286	Sumit Bahl
+T64	Material 291 300	Ying Yang
+T65	Descriptor 331 342	Lawrence F.
+T66	Operation 354 368	Ryan R. Dehoff
+T67	Operation 373 388	Alex Plotkowski
+R1	Coref Arg1:T2 Arg2:T1
+R2	Result_of Arg1:T3 Arg2:T1
+R3	Number_of Arg1:T5 Arg2:T6
+R4	Amount_of Arg1:T6 Arg2:T7
+R5	Form_Of Arg1:T9 Arg2:T11
+R6	Form_Of Arg1:T10 Arg2:T11
+R7	Form_Of Arg1:T10 Arg2:T12
+R8	Condition_Of Arg1:T14 Arg2:T13
+R9	Property_Of Arg1:T15 Arg2:T18
+R10	Form_Of Arg1:T16 Arg2:T18
+R11	Form_Of Arg1:T17 Arg2:T18
+R12	Condition_Of Arg1:T19 Arg2:T15
+R13	Condition_Of Arg1:T20 Arg2:T21
+R14	Property_Of Arg1:T21 Arg2:T24
+R15	Property_Of Arg1:T21 Arg2:T41
+R16	Form_Of Arg1:T22 Arg2:T24
+R17	Condition_Of Arg1:T23 Arg2:T24
+R18	Number_of Arg1:T25 Arg2:T26
+R19	Amount_of Arg1:T26 Arg2:T21
+R20	Amount_of Arg1:T26 Arg2:T27
+R21	Property_Of Arg1:T27 Arg2:T41
+R22	Form_Of Arg1:T28 Arg2:T29
+R23	Property_Of Arg1:T29 Arg2:T33
+R24	Number_of Arg1:T30 Arg2:T31
+R25	Amount_of Arg1:T31 Arg2:T29
+R26	Form_Of Arg1:T32 Arg2:T33
+R27	Number_of Arg1:T35 Arg2:T36
+R28	Number_of Arg1:T37 Arg2:T38
+R29	Output Arg1:T39 Arg2:T41
+R30	Property_Of Arg1:T40 Arg2:T41
+R31	Number_of Arg1:T42 Arg2:T43
+R32	Amount_of Arg1:T43 Arg2:T44
+R33	Condition_Of Arg1:T44 Arg2:T41
+R34	Form_Of Arg1:T45 Arg2:T47
+R35	Form_Of Arg1:T46 Arg2:T47
+R36	Property_Of Arg1:T48 Arg2:T47
+R37	Observed_In Arg1:T49 Arg2:T50
+R38	Coref Arg1:T51 Arg2:T50
+R39	Form_Of Arg1:T52 Arg2:T53
+R40	Condition_Of Arg1:T52 Arg2:T54
+R41	Number_of Arg1:T55 Arg2:T56
+R42	Property_Of Arg1:T57 Arg2:T59
+R43	Form_Of Arg1:T58 Arg2:T59
+R44	Form_Of Arg1:T60 Arg2:T61
