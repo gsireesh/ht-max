@@ -56,6 +56,7 @@ from papermage.recipes.recipe import Recipe
 from papermage.utils.annotate import group_by
 
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
+from papermage_components.highlightParser import FitzHighlightParser
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -83,6 +84,8 @@ class MaterialsRecipe(Recipe):
         ivila_predictor_path: str = "allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
         bio_roberta_predictor_path: str = "allenai/vila-roberta-large-s2vl-internal",
         svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
+        scispacy_model: str = "en_core_sci_md",
+        annotated_pdf_directory="data/AM_Creep_Papers_Annotated_1/",
         grobid_server_url: str = "http://himalayan.lti.cs.cmu.edu:8070",
         xml_out_dir: str = "data/grobid_xml",
         dpi: int = 72,
@@ -95,8 +98,8 @@ class MaterialsRecipe(Recipe):
         self.grobid_order_parser = GrobidReadingOrderParser(
             grobid_server_url, check_server=True, xml_out_dir=xml_out_dir
         )
+        self.highlight_parser = FitzHighlightParser(annotated_pdf_directory)
         self.rasterizer = PDF2ImageRasterizer()
-        self.xml_out_dir = xml_out_dir
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -121,6 +124,8 @@ class MaterialsRecipe(Recipe):
             pdf,
             doc,
         )
+        doc = self.highlight_parser.parse(pdf, doc)
+
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
@@ -147,7 +152,7 @@ class MaterialsRecipe(Recipe):
         vila_entities = self.ivila_predictor.predict(doc=doc)
         doc.annotate_layer(name="vila_entities", entities=vila_entities)
 
-        for entity in doc.vila_entities:
+        for entity in vila_entities:
             entity.boxes = [
                 Box.create_enclosing_box(
                     [
