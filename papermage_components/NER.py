@@ -52,7 +52,7 @@ class MatIE:
         env_vars["EXTRA_ARGS"] = ""
         
         subprocess.run(['chmod', '+x', decode_script], check=True)
-        subprocess.run(decode_script, shell=True, env=env_vars, cwd = "/Users/yuehengzhang/Desktop/Desktop/CMU/NLP/ht-max/MatIE", check=True)
+        subprocess.run(decode_script, shell=True, env=env_vars, cwd = "/Users/yuehengzhang/Desktop/Desktop/CMU/NLP/MatIE", check=True)
 
     def parse_ann_files(self,directory):
         span_list = []
