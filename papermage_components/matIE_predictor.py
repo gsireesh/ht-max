@@ -110,7 +110,7 @@ class MatIEPredictor(BasePredictor):
             section_name = paragraph.metadata["section_name"]
             paragraph_order = paragraph.metadata["paragraph_reading_order"]
             # TODO: make this more robust!! This implicitly assumes a paragraph has only one span.
-            paragraph_text = paragraph.text
+            paragraph_text = paragraph.text.replace("\n", " ")
             input_paragraph_starts[(section_name, paragraph_order)] = paragraph.spans[0].start
 
             input_paragraphs[(section_name, paragraph_order)] = self.generate_txt(
