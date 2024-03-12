@@ -220,9 +220,7 @@ class GrobidReadingOrderParser(Parser):
             "batch_size": 1000,
             "sleep_time": 5,
             "timeout": 60,
-            "coordinates": sorted(
-                {*GROBID_VILA_MAP.keys(), "s", "ref", "body", "item", "persName"}
-            ),
+            "coordinates": sorted({"head", "p", "s", "ref", "body", "item", "persName"}),
             **grobid_config,
         }
         assert "coordinates" in self.grobid_config, "Grobid config must contain 'coordinates' key"
