@@ -33,7 +33,7 @@ def convert_rect_to_papermage(rect, page, page_number):
     return Box(l=left, t=top, w=width, h=height, page=page_number)
 
 
-def get_highlight_entities_from_pdf(pdf_filename: str) -> list[Entity]:
+def get_highlight_entities_from_pdf(pdf_filename: str, doc: Document) -> list[Entity]:
     highlight_entities = []
     with fitz.open(pdf_filename) as pdf:
         for page_number, page in enumerate(pdf):
@@ -87,7 +87,7 @@ class FitzHighlightParser(Parser):
             print("No annotated file found, skipping...")
             return doc
 
-        highlight_entities = get_highlight_entities_from_pdf(annotated_filename)
+        highlight_entities = get_highlight_entities_from_pdf(annotated_filename, doc)
 
         doc.annotate_layer(HighlightsFieldName, highlight_entities)
 
