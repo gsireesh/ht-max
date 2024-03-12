@@ -8,7 +8,7 @@ import json
 import os
 from tempfile import NamedTemporaryFile
 from typing import Any, Optional
-import xml.etree.ElementTree as et
+import xml.etree.ElementTree as ET
 
 from grobid_client.grobid_client import GrobidClient
 
@@ -25,7 +25,7 @@ from papermage.parsers.parser import Parser
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
-def get_page_dimensions(root: et.Element) -> dict[int, tuple[float, float]]:
+def get_page_dimensions(root: ET.Element) -> dict[int, tuple[float, float]]:
     page_size_root = root.find(".//tei:facsimile", NS)
     assert page_size_root is not None, "No facsimile found in Grobid XML"
 
@@ -59,8 +59,8 @@ def parse_grobid_coords(
 
 
 def get_coords_by_section(
-    root: et.Element, page_dimensions: dict[int, tuple[float, float]]
-) -> dict[str, list[Box]]:
+    root: ET.Element, page_dimensions: dict[int, tuple[float, float]]
+) -> dict[str, list[list[Box]]]:
     section_divs = root.findall(".//tei:text/tei:body/tei:div", NS)
     coords_by_section = {}
     for div in section_divs:
@@ -68,21 +68,27 @@ def get_coords_by_section(
         if title_element is not None:
             title_text = title_element.text
             title_coords = title_element.attrib["coords"]
-            all_coords = [title_coords]
+            all_coords = [parse_grobid_coords(title_coords, page_dimensions)]
         else:
             title_text = "Unknown Section"
             all_coords = []
 
-        sentence_elements = div.findall(".//tei:s[@coords]", NS)
+        section_paragraphs = div.findall("./tei:p", NS)
+        for paragraph in section_paragraphs:
+            sentence_elements = paragraph.findall(".//tei:s[@coords]", NS)
 
-        all_coords = all_coords + [e.attrib["coords"] for e in sentence_elements]
-        section_boxes = list(
-            itertools.chain(
-                *[parse_grobid_coords(coord_string, page_dimensions) for coord_string in all_coords]
+            paragraph_coordinates = [e.attrib["coords"] for e in sentence_elements]
+            paragraph_boxes = list(
+                itertools.chain(
+                    *[
+                        parse_grobid_coords(coord_string, page_dimensions)
+                        for coord_string in paragraph_coordinates
+                    ]
+                )
             )
-        )
+            all_coords.append(paragraph_boxes)
 
-        coords_by_section[title_text] = section_boxes
+        coords_by_section[title_text] = all_coords
     return coords_by_section
 
 
@@ -127,15 +133,16 @@ def group_boxes_by_column(boxes: list[Box]):
     return [Box.create_enclosing_box(box_group) for box_group in boxes_by_group.values()]
 
 
-def segment_and_consolidate_boxes(section_boxes: list[Box], section_name: str) -> list[Box]:
-    boxes_by_page = defaultdict(list)
-    for box in section_boxes:
-        boxes_by_page[box.page].append(box)
-
+def segment_and_consolidate_boxes(section_boxes: list[list[Box]], section_name: str) -> list[Box]:
     consolidated_boxes = []
-    for _, page_boxes in boxes_by_page.items():
-        grouped_boxes = group_boxes_by_column(page_boxes)
-        consolidated_boxes.extend(grouped_boxes)
+    for paragraph_boxes in section_boxes:
+        boxes_by_page = defaultdict(list)
+        for box in paragraph_boxes:
+            boxes_by_page[box.page].append(box)
+
+        for _, page_boxes in boxes_by_page.items():
+            grouped_boxes = group_boxes_by_column(page_boxes)
+            consolidated_boxes.extend(grouped_boxes)
 
     return consolidated_boxes
 
@@ -193,7 +200,7 @@ class GrobidReadingOrderParser(Parser):
             with open(xml_file, "w") as f_out:
                 f_out.write(xml)
 
-        xml_root = et.fromstring(xml)
+        xml_root = ET.fromstring(xml)
         page_dimensions = get_page_dimensions(xml_root)
         section_to_boxes = get_coords_by_section(xml_root, page_dimensions)
 
