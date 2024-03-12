@@ -33,7 +33,7 @@ class MatIEEntity:
 
 
 def get_offset_map(in_text, out_text):
-    matcher = difflib.SequenceMatcher(isjunk=lambda x: False, a=in_text, b=out_text, autojunk=False)
+    matcher = difflib.SequenceMatcher(isjunk=lambda x: False, a=out_text, b=in_text, autojunk=False)
     opcodes = matcher.get_opcodes()
 
     current_offset = 0
@@ -54,37 +54,22 @@ def get_offset_map(in_text, out_text):
                 offsets[i] = None
         # do not need to worry about insertions.
 
-    offsets = {v: k for k, v in offsets.items()}
+    # offsets = {v: k for k, v in offsets.items()}
     return offsets
 
 
-def fix_entity_offsets(entities, offset_map, start, end, doc, annotated_text):
-
-    sentence_char_ranges = []
-    current_offset = 0
-    for sentence in doc.sentences[start:end]:
-        sentence_char_ranges.append((current_offset, current_offset + len(sentence.text)))
-        current_offset += len(sentence.text) + 1
-
+def fix_entity_offsets(entities, offset_map, para_offset):
     updated_entities = []
     for entity in entities:
         start_offset_file = offset_map[entity.start]
         end_offset_file = offset_map[entity.end]
 
-        sentence_offset = [
-            i for i, r in enumerate(sentence_char_ranges) if entity.start in range(*r)
-        ]
-        if len(sentence_offset) != 1:
-            continue
-        else:
-            sentence_offset = sentence_offset[0]
-
         updated_entities.append(
             MatIEEntity(
                 entity.id,
                 entity.entity_type,
-                start_offset_file + doc.sentences[start + sentence_offset].spans[0].start,
-                end_offset_file + doc.sentences[start + sentence_offset].spans[0].start,
+                start_offset_file + para_offset,
+                end_offset_file + para_offset,
                 entity.entity_string,
             )
         )
@@ -117,21 +102,19 @@ class MatIEPredictor(BasePredictor):
         return [SentencesFieldName, TokensFieldName]
 
     def _predict(self, doc: Document) -> List[Entity]:
-        ie_entities = self.entity_predict(doc, doc.sentences.entities, 10)
-        return ie_entities
 
-    def entity_predict(self, doc, sentence_spans: List[Entity], sentence_size=10) -> List[Entity]:
-        total_sentences = len(sentence_spans)
+        print("Creating temporary input files")
+        input_paragraphs = {}
+        input_paragraph_starts = {}
+        for paragraph in doc.reading_order_sections:
+            section_name = paragraph.metadata["section_name"]
+            paragraph_order = paragraph.metadata["paragraph_reading_order"]
+            # TODO: make this more robust!! This implicitly assumes a paragraph has only one span.
+            paragraph_text = paragraph.text
+            input_paragraph_starts[(section_name, paragraph_order)] = paragraph.spans[0].start
 
-        print("Generating temporary input files...")
-        input_sentences = {}
-        for i in range(0, total_sentences, sentence_size):
-            sent_start = i
-            sent_end = min(i + sentence_size, total_sentences)
-
-            subset = sentence_spans[sent_start:sent_end]
-            input_sentences[(sent_start, sent_end)] = self.generate_txt(
-                self.curr_file, subset, sent_start, sent_end
+            input_paragraphs[(section_name, paragraph_order)] = self.generate_txt(
+                self.curr_file, paragraph_text, section_name, paragraph_order
             )
 
         print("Annotating temp files")
@@ -140,7 +123,7 @@ class MatIEPredictor(BasePredictor):
         print("Reconciling input and annotated files...")
         annotated_sentences = {}
         entities = {}
-        for (start, end) in input_sentences:
+        for (start, end) in input_paragraphs:
             folder_name = f'{self.output_folder}{self.curr_file.replace(" ", "_")}'
             with open(os.path.join(folder_name, f"{start}-{end}.txt")) as f:
                 annotated_sentences[(start, end)] = f.read()
@@ -148,33 +131,30 @@ class MatIEPredictor(BasePredictor):
                 entities[(start, end)] = self.parse_ann_content(f.read())["entities"]
 
         fixed_entities = []
-        for (start, end), input_text in input_sentences.items():
+        for (start, end), input_text in input_paragraphs.items():
+            para_offset = input_paragraph_starts[(start, end)]
             annotated_text = annotated_sentences[(start, end)]
             offset_map = get_offset_map(input_text, annotated_text)
             fixed_entities.extend(
-                fix_entity_offsets(
-                    entities[(start, end)], offset_map, start, end, doc, annotated_text
-                )
+                fix_entity_offsets(entities[(start, end)], offset_map, para_offset)
             )
         return [entity.to_papermage_entity() for entity in fixed_entities]
 
-    def generate_txt(self, filename, subset, start, end):
-        processed_sentences = [sentence.text.replace("\n", "  ") for sentence in subset]
-
+    def generate_txt(self, filename, paragraph_text, section_name, reading_order):
         folder_name = f'{self.output_folder}{filename.replace(" ", "_")}'
-        file_path = f"{folder_name}/{start}-{end}.txt"
+        file_path = f"{folder_name}/{section_name}-{reading_order}.txt"
         os.makedirs(folder_name, exist_ok=True)
 
         with open(file_path, "w", encoding="utf-8") as file:
-            file.write("\n".join(processed_sentences))
+            file.write(paragraph_text)
 
         os.makedirs(folder_name + "_copy", exist_ok=True)
         with open(
             file_path.replace(folder_name, folder_name + "_copy"), "w", encoding="utf-8"
         ) as file:
-            file.write("\n".join(processed_sentences))
+            file.write(paragraph_text)
 
-        return "\n".join(processed_sentences)
+        return "\n".join(paragraph_text)
 
     def run_matIE(self):
         for dir_name in os.listdir(self.output_folder):
