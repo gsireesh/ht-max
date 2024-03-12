@@ -11,15 +11,20 @@ from typing import Any, Optional
 import xml.etree.ElementTree as ET
 
 from grobid_client.grobid_client import GrobidClient
-
+from ncls import NCLS
+import numpy as np
 from papermage.magelib import (
+    Box,
     Document,
     Entity,
+    Span,
     Metadata,
 )
-from papermage.magelib.box import Box
 from papermage.parsers.grobid_parser import GROBID_VILA_MAP
 from papermage.parsers.parser import Parser
+from papermage.utils.merge import cluster_and_merge_neighbor_spans
+
+from papermage_components.utils import get_spans_from_boxes
 
 
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
@@ -92,7 +97,7 @@ def get_coords_by_section(
     return coords_by_section
 
 
-def intersects(span1, span2, tol=0.0):
+def box_span_intersects(span1, span2, tol=0.0):
     start1, end1 = span1
     start2, end2 = span2
     return (start1 - tol <= start2 <= end1 + tol) or (start2 - tol <= start1 <= end2 + tol)
@@ -113,7 +118,7 @@ def group_boxes_by_column(boxes: list[Box]):
 
         if horizontal_covers:
             for i, cover in enumerate(horizontal_covers):
-                if intersects(cover, box_span, tol=0.01):
+                if box_span_intersects(cover, box_span, tol=0.01):
                     horizontal_covers[i] = update_cover_span(cover, box_span)
                     # this break implicitly *assumes* a columnar structure - if we e.g. have a piece
                     # of text that spans two columns, we won't find it
@@ -133,7 +138,9 @@ def group_boxes_by_column(boxes: list[Box]):
     return [Box.create_enclosing_box(box_group) for box_group in boxes_by_group.values()]
 
 
-def segment_and_consolidate_boxes(section_boxes: list[list[Box]], section_name: str) -> list[Box]:
+def segment_and_consolidate_boxes(
+    section_boxes: list[list[Box]], section_name: str
+) -> list[list[Box]]:
     consolidated_boxes = []
     for paragraph_boxes in section_boxes:
         boxes_by_page = defaultdict(list)
@@ -142,9 +149,62 @@ def segment_and_consolidate_boxes(section_boxes: list[list[Box]], section_name: 
 
         for _, page_boxes in boxes_by_page.items():
             grouped_boxes = group_boxes_by_column(page_boxes)
-            consolidated_boxes.extend(grouped_boxes)
+            consolidated_boxes.append(grouped_boxes)
 
     return consolidated_boxes
+
+
+def merge_overlapping_entities(entities):
+    starts = []
+    ends = []
+    ids = []
+
+    for id, entity in enumerate(entities):
+        for span in entity.spans:
+            starts.append(span.start)
+            ends.append(span.end)
+            ids.append(id)
+
+    index = NCLS(
+        np.array(starts, dtype=np.int32),
+        np.array(ends, dtype=np.int32),
+        np.array(ids, dtype=np.int32),
+    )
+
+    merged_entities = []
+    consumed_entities = set()
+    for entity in entities:
+        if entity in consumed_entities:
+            continue
+        for span in entity.spans:
+            match_ids = [
+                matched_id for _start, _end, matched_id in index.find_overlap(span.start, span.end)
+            ]
+            overlapping_entities = [entities[i] for i in match_ids]
+            if len(overlapping_entities) == 1:
+                merged_entities.append(entity)
+            elif len(overlapping_entities) > 1:
+                entity_sections = {e.metadata["section_name"] for e in overlapping_entities}
+                if len(entity_sections) != 1:
+                    raise AssertionError("Overlapping entities come from different sections!")
+
+                all_spans = list(
+                    itertools.chain(*[entity.spans for entity in overlapping_entities])
+                )
+                all_boxes = list(
+                    itertools.chain(*[entity.boxes for entity in overlapping_entities])
+                )
+                merged_entities.append(
+                    Entity(
+                        spans=[Span.create_enclosing_span(all_spans)],
+                        boxes=all_boxes,
+                        metadata=overlapping_entities[0].metadata,
+                    )
+                )
+                consumed_entities.update(overlapping_entities)
+                break
+
+    return merged_entities
 
 
 class GrobidReadingOrderParser(Parser):
@@ -209,11 +269,25 @@ class GrobidReadingOrderParser(Parser):
             for section, section_boxes in section_to_boxes.items()
         }
 
-        section_entities = [
-            Entity(boxes=boxes, metadata=Metadata(section_name=section_name, order=i))
-            for i, (section_name, boxes) in enumerate(consolidated_boxes.items())
-        ]
+        paragraph_entities = []
+        for section_number, (section, section_paragraph_boxes) in enumerate(
+            consolidated_boxes.items()
+        ):
+            for paragraph_order, paragraph_boxes in enumerate(section_paragraph_boxes):
+                paragraph_spans = get_spans_from_boxes(doc, paragraph_boxes)
+                paragraph_entity = Entity(
+                    boxes=paragraph_boxes,
+                    spans=paragraph_spans,
+                    metadata=Metadata(
+                        section_name=section,
+                        section_reading_order=section_number,
+                        paragraph_reading_order=paragraph_order,
+                    ),
+                )
+                paragraph_entities.append(paragraph_entity)
 
-        doc.annotate_layer("reading_order_sections", section_entities)
+        merged_paragraphs = merge_overlapping_entities(paragraph_entities)
+
+        doc.annotate_layer("reading_order_sections", merged_paragraphs)
 
         return doc
