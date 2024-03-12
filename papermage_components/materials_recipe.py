@@ -57,6 +57,8 @@ from papermage.utils.annotate import group_by
 
 from papermage_components.scispacy_sentence_predictor import SciSpacySentencePredictor
 from papermage_components.matIE_predictor import MatIEPredictor
+from papermage_components.reading_order_parser import GrobidReadingOrderParser
+from papermage_components.highlightParser import FitzHighlightParser
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -84,20 +86,28 @@ class MaterialsRecipe(Recipe):
         ivila_predictor_path: str = "allenai/ivila-row-layoutlm-finetuned-s2vl-v2",
         bio_roberta_predictor_path: str = "allenai/vila-roberta-large-s2vl-internal",
         svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
-        scispacy_model: str = "en_core_sci_scibert",
-        dpi: int = 72,
+        scispacy_model: str = "en_core_sci_md",
+        annotated_pdf_directory="data/AM_Creep_Papers_Annotated_1/",
+        grobid_server_url: str = "http://himalayan.lti.cs.cmu.edu:8070",
+        xml_out_dir: str = "data/grobid_xml",
         NER_model_dir: str = "",  # the directory of the NER model
         vocab_dir: str = "",  # the directory of the vocabulary
         output_folder: str = "",  # the directory of the vocabulary
         gpu_id: str = "0",
         decode_script: str = "",  # the decode module
+        dpi: int = 72,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
 
         self.logger.info("Instantiating recipe...")
-        self.parser = PDFPlumberParser()
+        self.pdfplumber_parser = PDFPlumberParser()
+        self.grobid_order_parser = GrobidReadingOrderParser(
+            grobid_server_url, check_server=True, xml_out_dir=xml_out_dir
+        )
+        self.highlight_parser = FitzHighlightParser(annotated_pdf_directory)
         self.rasterizer = PDF2ImageRasterizer()
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.word_predictor = SVMWordPredictor.from_path(svm_word_predictor_path)
@@ -128,8 +138,13 @@ class MaterialsRecipe(Recipe):
 
     def from_pdf(self, pdf: Path) -> Document:
         self.logger.info("Parsing document...")
-        print("pdf", pdf)
-        doc = self.parser.parse(input_pdf_path=pdf)
+        doc = self.pdfplumber_parser.parse(input_pdf_path=pdf)
+        doc = self.grobid_order_parser.parse(
+            pdf,
+            doc,
+        )
+        doc = self.highlight_parser.parse(pdf, doc)
+
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)

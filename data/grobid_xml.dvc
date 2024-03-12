@@ -1,0 +1,6 @@
+outs:
+- md5: 8e84952cc7dd8a0129eb17dc84f2fe2c.dir
+  size: 2701120
+  nfiles: 19
+  hash: md5
+  path: grobid_xml
