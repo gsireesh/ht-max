@@ -93,6 +93,10 @@ class FitzHighlightParser(Parser):
         pdf_filename = os.path.basename(input_pdf_path)
         annotated_filename = os.path.join(self.annotated_pdf_directory, f"annotated_{pdf_filename}")
 
+        if not os.path.exists(annotated_filename):
+            print("No annotated file found, skipping...")
+            return doc
+
         highlight_entities = get_highlight_entities_from_pdf(annotated_filename)
 
         doc.annotate_layer(HighlightsFieldName, highlight_entities)
