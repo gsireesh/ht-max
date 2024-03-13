@@ -9,6 +9,7 @@ import warnings
 from pathlib import Path
 from typing import Dict, List, Union
 
+
 from papermage.magelib import (
     AbstractsFieldName,
     AlgorithmsFieldName,
@@ -41,7 +42,6 @@ from papermage.magelib import (
     WordsFieldName,
 )
 from papermage.parsers.pdfplumber_parser import PDFPlumberParser
-from papermage.parsers.grobid_parser import GrobidFullParser
 from papermage.predictors import (
     HFBIOTaggerPredictor,
     IVILATokenClassificationPredictor,
@@ -55,6 +55,8 @@ from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 from papermage.recipes.recipe import Recipe
 from papermage.utils.annotate import group_by
 
+from papermage_components.scispacy_sentence_predictor import SciSpacySentencePredictor
+from papermage_components.matIE_predictor import MatIEPredictor
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
 
@@ -88,6 +90,11 @@ class MaterialsRecipe(Recipe):
         annotated_pdf_directory="data/AM_Creep_Papers_Annotated_1/",
         grobid_server_url: str = "http://himalayan.lti.cs.cmu.edu:8070",
         xml_out_dir: str = "data/grobid_xml",
+        NER_model_dir: str = "",  # the directory of the NER model
+        vocab_dir: str = "",  # the directory of the vocabulary
+        output_folder: str = "",  # the directory of the vocabulary
+        gpu_id: str = "0",
+        decode_script: str = "",  # the decode module
         dpi: int = 72,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -105,16 +112,28 @@ class MaterialsRecipe(Recipe):
             warnings.simplefilter("ignore")
             self.word_predictor = SVMWordPredictor.from_path(svm_word_predictor_path)
 
-        self.publaynet_block_predictor = LPEffDetPubLayNetBlockPredictor.from_pretrained()
-        self.ivila_predictor = IVILATokenClassificationPredictor.from_pretrained(
-            ivila_predictor_path
+        # self.publaynet_block_predictor = LPEffDetPubLayNetBlockPredictor.from_pretrained()
+        # self.ivila_predictor = IVILATokenClassificationPredictor.from_pretrained(
+        #     ivila_predictor_path
+        # )
+        # self.bio_roberta_predictor = HFBIOTaggerPredictor.from_pretrained(
+        #     bio_roberta_predictor_path,
+        #     entity_name="tokens",
+        #     context_name="pages",
+        # )
+        self.sent_predictor = SciSpacySentencePredictor(
+            model_name=scispacy_model,
         )
-        self.bio_roberta_predictor = HFBIOTaggerPredictor.from_pretrained(
-            bio_roberta_predictor_path,
-            entity_name="tokens",
-            context_name="pages",
+        self.matIE_predictor = MatIEPredictor(
+            NER_model_dir=NER_model_dir,
+            vocab_dir=vocab_dir,
+            output_folder=output_folder,
+            gpu_id=gpu_id,
+            decode_script=decode_script,
         )
-        self.sent_predictor = PysbdSentencePredictor()
+        # self.NER = MatIE(NER_model_dir = NER_model_dir, vocab_dir = vocab_dir,
+        #         output_folder = output_folder, gpu_id = gpu_id, decode_script = decode_script)
+
         self.logger.info("Finished instantiating recipe")
 
     def from_pdf(self, pdf: Path) -> Document:
@@ -124,13 +143,14 @@ class MaterialsRecipe(Recipe):
             pdf,
             doc,
         )
-        doc = self.highlight_parser.parse(pdf, doc)
-
+        # doc = self.highlight_parser.parse(pdf, doc)
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
         doc.annotate_images(images=list(images))
         self.rasterizer.attach_images(images=images, doc=doc)
+        self.matIE_predictor.curr_file = pdf.split("/")[-1][:-4]
+
         return self.from_doc(doc=doc)
 
     def from_doc(self, doc: Document) -> Document:
@@ -142,31 +162,35 @@ class MaterialsRecipe(Recipe):
         sentences = self.sent_predictor.predict(doc=doc)
         doc.annotate_layer(name=SentencesFieldName, entities=sentences)
 
-        self.logger.info("Predicting blocks...")
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            blocks = self.publaynet_block_predictor.predict(doc=doc)
-        doc.annotate_layer(name=BlocksFieldName, entities=blocks)
+        self.logger.info("Predicting MatIE Entities...")
+        matIE_entities = self.matIE_predictor.predict(doc=doc)
+        doc.annotate(matIE_entities)
 
-        self.logger.info("Predicting vila...")
-        vila_entities = self.ivila_predictor.predict(doc=doc)
-        doc.annotate_layer(name="vila_entities", entities=vila_entities)
-
-        for entity in vila_entities:
-            entity.boxes = [
-                Box.create_enclosing_box(
-                    [
-                        b
-                        for t in doc.intersect_by_span(entity, name=TokensFieldName)
-                        for b in t.boxes
-                    ]
-                )
-            ]
-            entity.text = make_text(entity=entity, document=doc)
-        preds = group_by(
-            entities=vila_entities, metadata_field="label", metadata_values_map=VILA_LABELS_MAP
-        )
-        doc.annotate(*preds)
+        # self.logger.info("Predicting blocks...")
+        # with warnings.catch_warnings():
+        #     warnings.simplefilter("ignore")
+        #     blocks = self.publaynet_block_predictor.predict(doc=doc)
+        # doc.annotate_layer(name=BlocksFieldName, entities=blocks)
+        #
+        # self.logger.info("Predicting vila...")
+        # vila_entities = self.ivila_predictor.predict(doc=doc)
+        # doc.annotate_layer(name="vila_entities", entities=vila_entities)
+        #
+        # for entity in vila_entities:
+        #     entity.boxes = [
+        #         Box.create_enclosing_box(
+        #             [
+        #                 b
+        #                 for t in doc.intersect_by_span(entity, name=TokensFieldName)
+        #                 for b in t.boxes
+        #             ]
+        #         )
+        #     ]
+        #     entity.text = make_text(entity=entity, document=doc)
+        # preds = group_by(
+        #     entities=vila_entities, metadata_field="label", metadata_values_map=VILA_LABELS_MAP
+        # )
+        # doc.annotate(*preds)
         return doc
 
 

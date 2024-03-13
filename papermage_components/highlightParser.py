@@ -1,17 +1,14 @@
-import itertools
 import os
 
 import fitz
 from papermage.magelib import (
     Box,
     Document,
-    EntitiesFieldName,
     Entity,
     Metadata,
-    Span,
 )
 from papermage.parsers.parser import Parser
-from papermage.utils.merge import cluster_and_merge_neighbor_spans
+from papermage_components.utils import get_spans_from_boxes
 
 HighlightsFieldName = "annotation_highlights"
 
@@ -36,14 +33,7 @@ def convert_rect_to_papermage(rect, page, page_number):
     return Box(l=left, t=top, w=width, h=height, page=page_number)
 
 
-def get_highlight_spans(boxes, doc):
-    intersecting_tokens = doc.intersect_by_box(query=Entity(boxes=boxes), name="tokens")
-    token_spans = list(itertools.chain(*(token.spans for token in intersecting_tokens)))
-    clustered_token_spans = cluster_and_merge_neighbor_spans(token_spans)
-    return clustered_token_spans.merged
-
-
-def get_highlight_entities_from_pdf(pdf_filename: str) -> list[Entity]:
+def get_highlight_entities_from_pdf(pdf_filename: str, doc: Document) -> list[Entity]:
     highlight_entities = []
     with fitz.open(pdf_filename) as pdf:
         for page_number, page in enumerate(pdf):
@@ -69,7 +59,7 @@ def get_highlight_entities_from_pdf(pdf_filename: str) -> list[Entity]:
                 color = annotation.colors["stroke"]
                 annotation_type = B_VALUE_TO_TYPE[color[2]]
 
-                entity_spans = get_highlight_spans(entity_boxes, doc)
+                entity_spans = get_spans_from_boxes(entity_boxes, doc)
 
                 entity_metadata = Metadata(
                     **{"annotation_color": color, ANNOTATION_TYPE_KEY: annotation_type}
@@ -93,7 +83,11 @@ class FitzHighlightParser(Parser):
         pdf_filename = os.path.basename(input_pdf_path)
         annotated_filename = os.path.join(self.annotated_pdf_directory, f"annotated_{pdf_filename}")
 
-        highlight_entities = get_highlight_entities_from_pdf(annotated_filename)
+        if not os.path.exists(annotated_filename):
+            print("No annotated file found, skipping...")
+            return doc
+
+        highlight_entities = get_highlight_entities_from_pdf(annotated_filename, doc)
 
         doc.annotate_layer(HighlightsFieldName, highlight_entities)
 
