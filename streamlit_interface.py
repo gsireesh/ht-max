@@ -10,6 +10,25 @@ st.set_page_config(layout="wide")
 # CONSTANTS
 PARSED_PAPER_FOLDER = "data/AM_Creep_Papers_parsed"
 
+MAT_IE_TYPES = [
+    "Participating_Material",
+    "Phase",
+    "Property",
+    "Result",
+    "Microstructure",
+    "Phenomenon",
+    "Synthesis",
+    "Material",
+    "Environment",
+    "Descriptor",
+    "Number",
+    "Amount_Unit",
+    "MStructure",
+    "Operation",
+    "Characterization",
+    "Application",
+]
+
 # focus_document = None
 
 
@@ -20,11 +39,14 @@ def load_document(doc_filename):
     return document
 
 
-def highlight_section_on_page(document, page_number, section_name):
+def highlight_section_on_page(document, page_number, section_name, paragraph):
     page = document.pages[page_number]
     page_image = page.images[0]
     section_entities = [
-        e for e in page.reading_order_sections if e.metadata["section_name"] == section_name
+        e
+        for e in page.reading_order_sections
+        if e.metadata["section_name"] == section_name
+        and e.metadata["paragraph_reading_order"] == paragraph
     ]
     highlighted = plot_entities_on_page(
         page_image,
@@ -59,16 +81,32 @@ if focus_document is not None:
 
     with sections_column:
         section_titles = [
-            section.metadata["section_name"]
+            (section.metadata["section_name"], section.metadata["paragraph_reading_order"])
             for section in focus_document.pages[focus_page].reading_order_sections
         ]
         selected_section = st.selectbox(
-            label="Select a section displayed on this page:", options=section_titles
+            label="Select a section and paragraph displayed on this page:",
+            options=section_titles,
+            format_func=lambda x: f"{x[0]}, Paragraph {x[1]}",
         )
-        for entity in focus_document.pages[focus_page].reading_order_sections:
-            if entity.metadata["section_name"] == selected_section:
-                st.text_area(entity.text)
 
-    doc_vis_column.write(focus_page)
-    highlighted_image = highlight_section_on_page(focus_document, focus_page, selected_section)
+        section_name, paragraph = selected_section
+        section_entities = [
+            e
+            for e in focus_document.pages[focus_page].reading_order_sections
+            if e.metadata["section_name"] == section_name
+            and e.metadata["paragraph_reading_order"] == paragraph
+        ]
+        st.markdown(f"## {section_entities[0].metadata['section_name']}")
+        for entity in section_entities:
+            st.write(entity.text)
+            st.markdown("---")
+            for annotation_key in MAT_IE_TYPES:
+                annotations = entity.intersect_by_span(annotation_key)
+                st.markdown(f"**{annotation_key}:**")
+                st.write([a.text for a in annotations])
+
+    highlighted_image = highlight_section_on_page(
+        focus_document, focus_page, section_name, paragraph
+    )
     doc_vis_column.write(highlighted_image.pilimage)
