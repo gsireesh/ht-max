@@ -3,31 +3,19 @@ import os
 
 from papermage import Document
 from papermage.visualizers import plot_entities_on_page
+import spacy
+import spacy_streamlit
 import streamlit as st
+
+from papermage_components.utils import visualize_paragraph
+from papermage_components.constants import MAT_IE_TYPES
+
 
 st.set_page_config(layout="wide")
 
 # CONSTANTS
 PARSED_PAPER_FOLDER = "data/AM_Creep_Papers_parsed"
-
-MAT_IE_TYPES = [
-    "Participating_Material",
-    "Phase",
-    "Property",
-    "Result",
-    "Microstructure",
-    "Phenomenon",
-    "Synthesis",
-    "Material",
-    "Environment",
-    "Descriptor",
-    "Number",
-    "Amount_Unit",
-    "MStructure",
-    "Operation",
-    "Characterization",
-    "Application",
-]
+spacy_pipeline = spacy.load("en_core_sci_md", exclude=["tagger", "parser", "ner"])
 
 # focus_document = None
 
@@ -101,10 +89,14 @@ if focus_document is not None:
         for entity in section_entities:
             st.write(entity.text)
             st.markdown("---")
-            for annotation_key in MAT_IE_TYPES:
-                annotations = entity.intersect_by_span(annotation_key)
-                st.markdown(f"**{annotation_key}:**")
-                st.write([a.text for a in annotations])
+            spacy_doc = visualize_paragraph(entity, spacy_pipeline)
+            spacy_streamlit.visualize_ner(
+                spacy_doc, labels=MAT_IE_TYPES, show_table=True, title="With detected entities"
+            )
+            # for annotation_key in MAT_IE_TYPES:
+            #     annotations = entity.intersect_by_span(annotation_key)
+            #     st.markdown(f"**{annotation_key}:**")
+            #     st.write([a.text for a in annotations])
 
     highlighted_image = highlight_section_on_page(
         focus_document, focus_page, section_name, paragraph
