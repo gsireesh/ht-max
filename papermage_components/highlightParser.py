@@ -59,7 +59,7 @@ def get_highlight_entities_from_pdf(pdf_filename: str, doc: Document) -> list[En
                 color = annotation.colors["stroke"]
                 annotation_type = B_VALUE_TO_TYPE[color[2]]
 
-                entity_spans = get_spans_from_boxes(entity_boxes, doc)
+                entity_spans = get_spans_from_boxes(doc, entity_boxes)
 
                 entity_metadata = Metadata(
                     **{"annotation_color": color, ANNOTATION_TYPE_KEY: annotation_type}

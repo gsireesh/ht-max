@@ -143,7 +143,7 @@ class MaterialsRecipe(Recipe):
             pdf,
             doc,
         )
-        # doc = self.highlight_parser.parse(pdf, doc)
+        doc = self.highlight_parser.parse(pdf, doc)
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
