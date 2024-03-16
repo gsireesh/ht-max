@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import difflib
 import os
+import re
 import subprocess
 from typing import List, Tuple
 
