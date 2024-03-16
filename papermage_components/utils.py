@@ -84,7 +84,7 @@ def annotate_entities_on_doc(entities_by_type, spacy_doc, para_offset):
             span = spacy_doc.char_span(e_start_char, e_end_char, label=e_type)
             all_spans.append(span)
 
-        spacy_doc.set_ents(all_spans)
+    spacy_doc.set_ents(all_spans)
 
 
 def visualize_paragraph(paragraph_entity, spacy_pipeline):
