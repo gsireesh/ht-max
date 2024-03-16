@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import difflib
 import os
+import re
 import subprocess
 from typing import List, Tuple
 
@@ -33,7 +34,10 @@ class MatIEEntity:
         return Entity(spans=[span], metadata=meta)
 
 
-def get_offset_map(in_text, out_text, start, end):
+relation_re = re.compile("R\d+\t(?P<r_type>.*) Arg1:(?P<arg1>T\d+) Arg2:(?P<arg2>T\d+)")
+
+
+def get_offset_map(in_text, out_text):
     matcher = difflib.SequenceMatcher(isjunk=lambda x: False, a=out_text, b=in_text, autojunk=False)
     opcodes = matcher.get_opcodes()
     offsets = {}
@@ -58,7 +62,7 @@ def get_offset_map(in_text, out_text, start, end):
     return offsets
 
 
-def fix_entity_offsets(entities, offset_map, para_offset, start, end):
+def fix_entity_offsets(entities, offset_map, para_offset):
     updated_entities = []
     for entity in entities:
         start_offset_file = offset_map[entity.start]
@@ -82,6 +86,7 @@ def fix_entity_offsets(entities, offset_map, para_offset, start, end):
 
 def parse_ann_content(ann_content):
     entities = []
+    relations = []
     for line in ann_content.split("\n"):
         if line.startswith("T"):
             parts = line.split("\t")
@@ -90,7 +95,17 @@ def parse_ann_content(ann_content):
             e_string = "\t".join(parts[2:])
             entity = MatIEEntity(e_id, e_type, int(e_start), int(e_end), e_string)
             entities.append(entity)
-    return {"entities": entities}
+        elif line.startswith("R"):
+            match = relation_re.fullmatch(line)
+            relations.append(
+                {
+                    "relation_type": match.group("r_type"),
+                    "arg1": match.group("arg1"),
+                    "arg2": match.group("arg2"),
+                }
+            )
+
+    return {"entities": entities, "relations": relations}
 
 
 class MatIEPredictor(BasePredictor):
@@ -140,21 +155,25 @@ class MatIEPredictor(BasePredictor):
         print("Reconciling input and annotated files...")
         annotated_sentences = {}
         entities = {}
+        relations = {}
         for start, end in input_paragraphs:
             folder_name = f'{self.output_folder}{self.curr_file.replace(" ", "_")}'
             with open(os.path.join(folder_name, f"{start}-{end}.txt")) as f:
                 annotated_sentences[(start, end)] = f.read()
             with open(os.path.join(folder_name, f"{start}-{end}.ann")) as f:
-                entities[(start, end)] = parse_ann_content(f.read())["entities"]
+                ann_content = parse_ann_content(f.read())
+                entities[(start, end)] = ann_content["entities"]
+                relations[(start, end)] = ann_content["relations"]
 
         fixed_entities = []
-        for (start, end), input_text in input_paragraphs.items():
-            para_offset = input_paragraph_starts[(start, end)]
-            annotated_text = annotated_sentences[(start, end)]
-            offset_map = get_offset_map(input_text, annotated_text, start, end)
-            fixed_entities.extend(
-                fix_entity_offsets(entities[(start, end)], offset_map, para_offset, start, end)
-            )
+        for (key, input_text), paragraph in zip(
+            input_paragraphs.items(), doc.reading_order_sections
+        ):
+            para_offset = input_paragraph_starts[key]
+            annotated_text = annotated_sentences[key]
+            offset_map = get_offset_map(input_text, annotated_text)
+            fixed_entities.extend(fix_entity_offsets(entities[key], offset_map, para_offset))
+            paragraph.metadata["in_section_relations"] = relations[key]
         papermage_entities = [entity.to_papermage_entity() for entity in fixed_entities]
         predictions = group_by(
             papermage_entities,

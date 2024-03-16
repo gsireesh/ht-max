@@ -3,13 +3,13 @@ import itertools
 from ncls import NCLS
 import numpy as np
 
-from papermage import Entity, Span
+from papermage import Document, Box, Entity, Span
 from papermage.utils.merge import cluster_and_merge_neighbor_spans
 
 from papermage_components.constants import MAT_IE_TYPES
 
 
-def get_spans_from_boxes(doc, boxes):
+def get_spans_from_boxes(doc: Document, boxes: list[Box]):
     intersecting_tokens = doc.intersect_by_box(query=Entity(boxes=boxes), name="tokens")
     token_spans = list(itertools.chain(*(token.spans for token in intersecting_tokens)))
     clustered_token_spans = cluster_and_merge_neighbor_spans(token_spans).merged
@@ -84,7 +84,7 @@ def annotate_entities_on_doc(entities_by_type, spacy_doc, para_offset):
             span = spacy_doc.char_span(e_start_char, e_end_char, label=e_type)
             all_spans.append(span)
 
-        spacy_doc.set_ents(all_spans)
+    spacy_doc.set_ents(all_spans)
 
 
 def visualize_paragraph(paragraph_entity, spacy_pipeline):

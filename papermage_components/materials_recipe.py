@@ -139,11 +139,13 @@ class MaterialsRecipe(Recipe):
     def from_pdf(self, pdf: Path) -> Document:
         self.logger.info("Parsing document...")
         doc = self.pdfplumber_parser.parse(input_pdf_path=pdf)
+        self.logger.info("Getting Reading Order Sections...")
         doc = self.grobid_order_parser.parse(
             pdf,
             doc,
         )
-        # doc = self.highlight_parser.parse(pdf, doc)
+        self.logger.info("Parsing highlights...")
+        doc = self.highlight_parser.parse(pdf, doc)
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
