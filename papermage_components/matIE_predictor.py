@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import difflib
 import os
-import re
 import subprocess
 from typing import List, Tuple
 
@@ -16,7 +15,6 @@ from papermage.magelib import (
 )
 from papermage.predictors import BasePredictor
 from papermage.utils.annotate import group_by
-from papermage_components.utils import merge_overlapping_entities
 
 
 @dataclass

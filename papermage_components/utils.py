@@ -6,6 +6,8 @@ import numpy as np
 from papermage import Entity, Span
 from papermage.utils.merge import cluster_and_merge_neighbor_spans
 
+from papermage_components.constants import MAT_IE_TYPES
+
 
 def get_spans_from_boxes(doc, boxes):
     intersecting_tokens = doc.intersect_by_box(query=Entity(boxes=boxes), name="tokens")
@@ -68,3 +70,26 @@ def merge_overlapping_entities(entities):
                 break
 
     return merged_entities
+
+
+def annotate_entities_on_doc(entities_by_type, spacy_doc, para_offset):
+    all_spans = []
+    for e_type, entities in entities_by_type.items():
+        if not entities:
+            continue
+        for entity in entities:
+            e_start_char = entity.spans[0].start - para_offset
+            e_end_char = entity.spans[0].end - para_offset
+
+            span = spacy_doc.char_span(e_start_char, e_end_char, label=e_type)
+            all_spans.append(span)
+
+        spacy_doc.set_ents(all_spans)
+
+
+def visualize_paragraph(paragraph_entity, spacy_pipeline):
+    entities_by_type = {e_type: getattr(paragraph_entity, e_type) for e_type in MAT_IE_TYPES}
+    para_doc = spacy_pipeline(paragraph_entity.text.replace("\n", " "))
+    para_offset = paragraph_entity.spans[0].start
+    annotate_entities_on_doc(entities_by_type, para_doc, para_offset)
+    return para_doc
