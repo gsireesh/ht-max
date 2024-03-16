@@ -89,6 +89,6 @@ class FitzHighlightParser(Parser):
 
         highlight_entities = get_highlight_entities_from_pdf(annotated_filename, doc)
 
-        doc.annotate_layer(HighlightsFieldName, highlight_entities)
+        doc.annotate_layer(HighlightsFieldName, highlight_entities, require_disjoint=False)
 
         return doc
