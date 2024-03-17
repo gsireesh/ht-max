@@ -3,11 +3,14 @@ import os
 
 import pandas as pd
 from papermage import Document
+from papermage import Box
 from papermage.visualizers import plot_entities_on_page
 import spacy
 import spacy_streamlit
 import streamlit as st
 from streamlit.column_config import TextColumn
+from streamlit_dimensions import st_dimensions
+from streamlit_image_coordinates import streamlit_image_coordinates
 
 from papermage_components.utils import visualize_paragraph
 from papermage_components.constants import MAT_IE_TYPES, MAT_IE_COLORS
@@ -17,6 +20,7 @@ st.set_page_config(layout="wide")
 
 # CONSTANTS
 PARSED_PAPER_FOLDER = "data/AM_Creep_Papers_parsed"
+BOX_PADDING = 0.01
 
 # focus_document = None
 
@@ -144,9 +148,8 @@ with summary_view:
                 st.write(f"From page {table_page + 1}")
 
 
-with annotations_view:
+with ((annotations_view)):
     doc_vis_column, sections_column = st.columns([0.4, 0.6])
-
     with doc_vis_column:
         focus_page = st.slider(
             label="Select the document page to view",
@@ -157,42 +160,92 @@ with annotations_view:
         )
         focus_page = focus_page - 1
 
+    clicked_section = st.session_state.get("clicked_section", None)
+    if (
+        clicked_section is None
+        or clicked_section[0] != file_selector
+        or clicked_section[1] != focus_page
+    ):
+        st.session_state["clicked_section"] = None
+        section_name = None
+        paragraph = None
+    else:
+        section_name = clicked_section[2]
+        paragraph = clicked_section[3]
+
     with sections_column:
-        section_titles = [
-            (section.metadata["section_name"], section.metadata["paragraph_reading_order"])
-            for section in focus_document.pages[focus_page].reading_order_sections
-        ]
-        selected_section = st.selectbox(
-            label="Select a section and paragraph displayed on this page:",
-            options=section_titles,
-            format_func=lambda x: f"{x[0]}, Paragraph {x[1]}",
+        # section_titles = [
+        #     (section.metadata["section_name"], section.metadata["paragraph_reading_order"])
+        #     for section in focus_document.pages[focus_page].reading_order_sections
+        # ]
+        # selected_section = st.selectbox(
+        #     label="Select a section and paragraph displayed on this page:",
+        #     options=section_titles,
+        #     format_func=lambda x: f"{x[0]}, Paragraph {x[1]}",
+        # )
+        #
+        # section_name, paragraph = selected_section
+
+        if section_name is not None:
+            section_entities = [
+                e
+                for e in focus_document.pages[focus_page].reading_order_sections
+                if e.metadata["section_name"] == section_name
+                and e.metadata["paragraph_reading_order"] == paragraph
+            ]
+            st.markdown(f"## {section_entities[0].metadata['section_name']}")
+            for entity in section_entities:
+                st.write(entity.text)
+                st.markdown("---")
+                spacy_doc = visualize_paragraph(entity, get_spacy_pipeline())
+                spacy_streamlit.visualize_ner(
+                    spacy_doc,
+                    labels=MAT_IE_TYPES,
+                    show_table=True,
+                    title="With MatIE entities",
+                    displacy_options={"colors": MAT_IE_COLORS},
+                )
+                # for annotation_key in MAT_IE_TYPES:
+                #     annotations = entity.intersect_by_span(annotation_key)
+                #     st.markdown(f"**{annotation_key}:**")
+                #     st.write([a.text for a in annotations])
+
+    with doc_vis_column:
+        st.write("Click a section of text to view the annotations on it:")
+        highlighted_image = highlight_section_on_page(
+            focus_document, focus_page, section_name, paragraph
         )
+        page_width, page_height = highlighted_image.pilimage.size
+        ratio = page_height / page_width
 
-        section_name, paragraph = selected_section
-        section_entities = [
-            e
-            for e in focus_document.pages[focus_page].reading_order_sections
-            if e.metadata["section_name"] == section_name
-            and e.metadata["paragraph_reading_order"] == paragraph
-        ]
-        st.markdown(f"## {section_entities[0].metadata['section_name']}")
-        for entity in section_entities:
-            st.write(entity.text)
-            st.markdown("---")
-            spacy_doc = visualize_paragraph(entity, get_spacy_pipeline())
-            spacy_streamlit.visualize_ner(
-                spacy_doc,
-                labels=MAT_IE_TYPES,
-                show_table=True,
-                title="With MatIE entities",
-                displacy_options={"colors": MAT_IE_COLORS},
-            )
-            # for annotation_key in MAT_IE_TYPES:
-            #     annotations = entity.intersect_by_span(annotation_key)
-            #     st.markdown(f"**{annotation_key}:**")
-            #     st.write([a.text for a in annotations])
+        image_width = st_dimensions(key="doc_vis")["width"]
+        image_height = image_width * ratio
 
-    highlighted_image = highlight_section_on_page(
-        focus_document, focus_page, section_name, paragraph
-    )
-    doc_vis_column.image(highlighted_image.pilimage, use_column_width=True)
+        image_coords = streamlit_image_coordinates(
+            highlighted_image.pilimage, key="pil", width=image_width
+        )
+        x = image_coords["x"] / image_width
+        y = image_coords["y"] / image_height
+
+        click_sections = focus_document.find(
+            Box(x - BOX_PADDING / 2, y - BOX_PADDING / 2, BOX_PADDING, BOX_PADDING, focus_page),
+            "reading_order_sections",
+        )
+        if not click_sections:
+            st.toast("No parsed content found at specified location!")
+        else:
+            section_name = click_sections[0].metadata["section_name"]
+            paragraph = click_sections[0].metadata["paragraph_reading_order"]
+            if st.session_state.get("clicked_section") != (
+                file_selector,
+                focus_page,
+                section_name,
+                paragraph,
+            ):
+                st.session_state["clicked_section"] = (
+                    file_selector,
+                    focus_page,
+                    section_name,
+                    paragraph,
+                )
+                st.rerun()
