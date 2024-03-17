@@ -1,20 +1,31 @@
 MAT_IE_COLORS = {
-    "Participating_Material": "red",
-    "Phase": "red",
-    "Property": "green",
-    "Result": "green",
-    "Microstructure": "blue",
-    "Phenomenon": "green",
+    "Participating_Material": "tomato",
+    "Phase": "tomato",
+    "Property": "lightgreen",
+    "Result": "lightgreen",
+    "Microstructure": "cornflowerblue",
+    "Phenomenon": "lightgreen",
     "Synthesis": "orange",
-    "Material": "red",
+    "Material": "tomato",
     "Environment": "orange",
-    "Descriptor": "red",
-    "Number": "grey",
-    "Amount_Unit": "grey",
-    "MStructure": "blue",
+    "Descriptor": "tomato",
+    "Number": "lightgrey",
+    "Amount_Unit": "lightgrey",
+    "MStructure": "cornflowerblue",
     "Operation": "orange",
     "Characterization": "yellow",
-    "Application": "green",
+    "Application": "lightgreen",
 }
 
 MAT_IE_TYPES = list(MAT_IE_COLORS.keys())
+
+HIGHLIGHT_COLORS = {
+    "structure": "cornflowerblue",
+    "property": "lightgreen",
+    "characterization": "gold",
+    "processing": "orange",
+    "materials": "tomato",
+    "info": "mediumpurple",
+}
+
+HIGHLIGHT_TYPES = list(HIGHLIGHT_COLORS.keys())

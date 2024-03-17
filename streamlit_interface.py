@@ -12,9 +12,16 @@ from streamlit.column_config import TextColumn
 from streamlit_dimensions import st_dimensions
 from streamlit_image_coordinates import streamlit_image_coordinates
 
-from papermage_components.utils import visualize_matIE_annotations, visualize_highlights
-from papermage_components.constants import MAT_IE_TYPES, MAT_IE_COLORS
-from papermage_components.highlightParser import HIGHLIGHT_TYPES
+from papermage_components.utils import (
+    visualize_matIE_annotations,
+    visualize_highlights,
+)
+from papermage_components.constants import (
+    MAT_IE_TYPES,
+    MAT_IE_COLORS,
+    HIGHLIGHT_TYPES,
+    HIGHLIGHT_COLORS,
+)
 
 
 st.set_page_config(layout="wide")
@@ -192,7 +199,7 @@ with annotations_view:
                     labels=HIGHLIGHT_TYPES,
                     show_table=False,
                     title="Highlighted Entities",
-                    # displacy_options={"colors": MAT_IE_COLORS},
+                    displacy_options={"colors": HIGHLIGHT_COLORS},
                     key="annotation_highlights",
                 )
                 st.markdown("---")

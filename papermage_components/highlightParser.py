@@ -23,8 +23,6 @@ B_VALUE_TO_TYPE = {
     0.5254970192909241: "info",
 }
 
-HIGHLIGHT_TYPES = {t.title() for t in B_VALUE_TO_TYPE.values()}
-
 
 def convert_rect_to_papermage(rect, page, page_number):
     left = rect[0] / page.rect.width
