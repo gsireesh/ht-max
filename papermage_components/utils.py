@@ -1,4 +1,5 @@
 import itertools
+from typing import Optional
 
 from ncls import NCLS
 import numpy as np
@@ -17,6 +18,36 @@ def get_spans_from_boxes(doc: Document, boxes: list[Box]):
         merged for merged in clustered_token_spans if merged.end - merged.start > 1
     ]
     return filtered_for_strays
+
+
+def get_span_by_box(box, doc) -> Optional[Span]:
+    overlapping_tokens = doc.intersect_by_box(Entity(boxes=[box]), "tokens")
+    token_spans = []
+    for token in overlapping_tokens:
+        token_spans.extend(token.spans)
+    if token_spans:
+        return Span.create_enclosing_span(token_spans)
+    else:
+        return None
+
+
+def get_text_in_box(box, doc):
+    cell_span = get_span_by_box(box, doc)
+    return doc.symbols[cell_span.start : cell_span.end] if cell_span is not None else ""
+
+
+def globalize_bbox_coordinates(bbox, context_box, doc):
+    page_width, page_height = doc.pages[context_box.page].images[0].pilimage.size
+    bbox_left = context_box.l + (bbox[0] / page_width)
+    bbox_top = context_box.t + (bbox[1] / page_height)
+    bbox_width = (bbox[2] - bbox[0]) / page_width
+    bbox_height = (bbox[3] - bbox[1]) / page_height
+    return Box(bbox_left, bbox_top, bbox_width, bbox_height, page=context_box.page)
+
+
+def get_text_from_localized_bbox(bbox, context_box, doc):
+    global_box = globalize_bbox_coordinates(bbox, context_box, doc)
+    return get_text_in_box(global_box, doc)
 
 
 def merge_overlapping_entities(entities):
