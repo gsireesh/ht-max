@@ -148,7 +148,7 @@ with summary_view:
                 st.write(f"From page {table_page + 1}")
 
 
-with ((annotations_view)):
+with annotations_view:
     doc_vis_column, sections_column = st.columns([0.4, 0.6])
     with doc_vis_column:
         focus_page = st.slider(
@@ -174,18 +174,6 @@ with ((annotations_view)):
         paragraph = clicked_section[3]
 
     with sections_column:
-        # section_titles = [
-        #     (section.metadata["section_name"], section.metadata["paragraph_reading_order"])
-        #     for section in focus_document.pages[focus_page].reading_order_sections
-        # ]
-        # selected_section = st.selectbox(
-        #     label="Select a section and paragraph displayed on this page:",
-        #     options=section_titles,
-        #     format_func=lambda x: f"{x[0]}, Paragraph {x[1]}",
-        # )
-        #
-        # section_name, paragraph = selected_section
-
         if section_name is not None:
             section_entities = [
                 e
@@ -205,10 +193,6 @@ with ((annotations_view)):
                     title="With MatIE entities",
                     displacy_options={"colors": MAT_IE_COLORS},
                 )
-                # for annotation_key in MAT_IE_TYPES:
-                #     annotations = entity.intersect_by_span(annotation_key)
-                #     st.markdown(f"**{annotation_key}:**")
-                #     st.write([a.text for a in annotations])
 
     with doc_vis_column:
         st.write("Click a section of text to view the annotations on it:")
