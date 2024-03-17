@@ -131,12 +131,12 @@ def convert_table_mapping_to_boxes_and_text(header_to_column_mapping, table_enti
     for header_cell, row_cells in header_to_column_mapping.items():
         table_box = table_entity.boxes[0]
         header_box = shrink_box(globalize_bbox_coordinates(header_cell, table_box, doc), shrink)
-        all_cell_boxes.append(header_box)
+        all_cell_boxes.append(header_box.to_json())
         header_text = get_text_in_box(header_box, doc)
         table_text_repr[header_text] = []
         for a_cell in row_cells:
             cell_box = shrink_box(globalize_bbox_coordinates(a_cell, table_box, doc), shrink)
-            all_cell_boxes.append(cell_box)
+            all_cell_boxes.append(cell_box.to_json())
             table_text_repr[header_text].append(get_text_in_box(cell_box, doc))
     return all_cell_boxes, table_text_repr
 
