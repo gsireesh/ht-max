@@ -70,6 +70,17 @@ def get_matie_entities(doc, allowed_sections, allowed_types):
     return all_entities
 
 
+def get_tables(doc, filter_string):
+    tables_to_return = []
+    for table in doc.tables:
+        table_dict = table.metadata["table_dict"]
+        filter_match = any([filter_string in header for header in table_dict])
+        if not table_dict or not filter_match:
+            continue
+        tables_to_return.append(table)
+    return tables_to_return
+
+
 @st.cache_resource
 def get_spacy_pipeline():
     return spacy.load("en_core_sci_md", exclude=["tagger", "parser", "ner"])
@@ -89,6 +100,7 @@ summary_view, annotations_view, inspection_view = st.tabs(
 with summary_view:
     entities_column, table_column = st.columns([0.5, 0.5])
     with entities_column:
+        st.write("## Tagged Entities")
         all_sections = {e.metadata["section_name"] for e in focus_document.reading_order_sections}
         entity_type_choice = st.multiselect(
             label="Choose which entity types to display", options=MAT_IE_TYPES, default=None
@@ -113,6 +125,24 @@ with summary_view:
                 "entity_section": TextColumn("Section", width=None),
             },
         )
+
+    with table_column:
+        st.write("## Parsed Tables")
+        column_header_filter = st.text_input(
+            "table_filter",
+            label_visibility="collapsed",
+            placeholder="Filter tables based on column headers:",
+        )
+
+        filtered_tables = get_tables(focus_document, column_header_filter)
+        st.write(f"Found {len(filtered_tables)} matching tables")
+        for table in filtered_tables:
+            with st.container(border=True):
+                table_dict = table.metadata["table_dict"]
+                st.dataframe(pd.DataFrame(table_dict))
+                table_page = table.boxes[0].page
+                st.write(f"From page {table_page + 1}")
+
 
 with annotations_view:
     doc_vis_column, sections_column = st.columns([0.4, 0.6])
