@@ -83,7 +83,7 @@ def get_tables(doc, filter_string):
 
 @st.cache_resource
 def get_spacy_pipeline():
-    return spacy.load("en_core_sci_md", exclude=["tagger", "parser", "ner"])
+    return spacy.load("en_core_sci_md", exclude=["tagger", "parser", "ner", "lemmatizer"])
 
 
 file_options = os.listdir(PARSED_PAPER_FOLDER)
