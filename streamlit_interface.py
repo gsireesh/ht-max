@@ -12,8 +12,9 @@ from streamlit.column_config import TextColumn
 from streamlit_dimensions import st_dimensions
 from streamlit_image_coordinates import streamlit_image_coordinates
 
-from papermage_components.utils import visualize_paragraph
+from papermage_components.utils import visualize_matIE_annotations, visualize_highlights
 from papermage_components.constants import MAT_IE_TYPES, MAT_IE_COLORS
+from papermage_components.highlightParser import HIGHLIGHT_TYPES
 
 
 st.set_page_config(layout="wide")
@@ -182,16 +183,27 @@ with annotations_view:
                 and e.metadata["paragraph_reading_order"] == paragraph
             ]
             st.markdown(f"## {section_entities[0].metadata['section_name']}")
+
             for entity in section_entities:
-                st.write(entity.text)
-                st.markdown("---")
-                spacy_doc = visualize_paragraph(entity, get_spacy_pipeline())
+                entity_highlights = entity.annotation_highlights
+                highlight_spacy_doc = visualize_highlights(entity, get_spacy_pipeline())
                 spacy_streamlit.visualize_ner(
-                    spacy_doc,
+                    highlight_spacy_doc,
+                    labels=HIGHLIGHT_TYPES,
+                    show_table=False,
+                    title="Highlighted Entities",
+                    # displacy_options={"colors": MAT_IE_COLORS},
+                    key="annotation_highlights",
+                )
+                st.markdown("---")
+                matIE_spacy_doc = visualize_matIE_annotations(entity, get_spacy_pipeline())
+                spacy_streamlit.visualize_ner(
+                    matIE_spacy_doc,
                     labels=MAT_IE_TYPES,
-                    show_table=True,
-                    title="With MatIE entities",
+                    show_table=False,
+                    title="MatIE entities",
                     displacy_options={"colors": MAT_IE_COLORS},
+                    key="matIE_highlights",
                 )
 
     with doc_vis_column:
@@ -208,8 +220,8 @@ with annotations_view:
         image_coords = streamlit_image_coordinates(
             highlighted_image.pilimage, key="pil", width=image_width
         )
-        x = image_coords["x"] / image_width
-        y = image_coords["y"] / image_height
+        x = image_coords.get("x", 0) / image_width
+        y = image_coords.get("y", 0) / image_height
 
         click_sections = focus_document.find(
             Box(x - BOX_PADDING / 2, y - BOX_PADDING / 2, BOX_PADDING, BOX_PADDING, focus_page),

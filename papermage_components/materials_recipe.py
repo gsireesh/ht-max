@@ -88,7 +88,7 @@ class MaterialsRecipe(Recipe):
         bio_roberta_predictor_path: str = "allenai/vila-roberta-large-s2vl-internal",
         svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
         scispacy_model: str = "en_core_sci_md",
-        annotated_pdf_directory="data/AM_Creep_Papers_Annotated_1/",
+        annotated_pdf_directory="data/AM_Creep_Papers_Annotated_2/",
         grobid_server_url: str = "http://himalayan.lti.cs.cmu.edu:8070",
         xml_out_dir: str = "data/grobid_xml",
         NER_model_dir: str = "",  # the directory of the NER model
@@ -145,8 +145,8 @@ class MaterialsRecipe(Recipe):
             pdf,
             doc,
         )
-        # self.logger.info("Parsing highlights...")
-        # doc = self.highlight_parser.parse(pdf, doc)
+        self.logger.info("Parsing highlights...")
+        doc = self.highlight_parser.parse(pdf, doc)
 
         self.logger.info("Rasterizing document...")
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
