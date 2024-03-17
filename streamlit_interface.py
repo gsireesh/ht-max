@@ -1,11 +1,13 @@
 import json
 import os
 
+import pandas as pd
 from papermage import Document
 from papermage.visualizers import plot_entities_on_page
 import spacy
 import spacy_streamlit
 import streamlit as st
+from streamlit.column_config import TextColumn
 
 from papermage_components.utils import visualize_paragraph
 from papermage_components.constants import MAT_IE_TYPES, MAT_IE_COLORS
@@ -46,6 +48,28 @@ def highlight_section_on_page(document, page_number, section_name, paragraph):
     return highlighted
 
 
+def get_matie_entities(doc, allowed_sections, allowed_types):
+    all_entities = []
+    for matie_type in MAT_IE_TYPES:
+        if matie_type not in allowed_types:
+            continue
+        entities = getattr(doc, matie_type)
+        for entity in entities:
+            section_name = entity.reading_order_sections[0].metadata["section_name"]
+            if section_name not in allowed_sections:
+                continue
+            sentence_context = entity.sentences[0].text
+            all_entities.append(
+                {
+                    "entity_type": matie_type,
+                    "entity_text": entity.text,
+                    "entity_section": section_name,
+                    "sentence_context": sentence_context,
+                }
+            )
+    return all_entities
+
+
 @st.cache_resource
 def get_spacy_pipeline():
     return spacy.load("en_core_sci_md", exclude=["tagger", "parser", "ner"])
@@ -58,7 +82,39 @@ with st.sidebar:  # .form("File selector"):
     file_selector = st.selectbox("Parsed file", options=file_options)
     focus_document = load_document(file_selector)
 
-if focus_document is not None:
+summary_view, annotations_view, inspection_view = st.tabs(
+    ["Summary View", "Annotations View", "Inspection View"]
+)
+
+with summary_view:
+    entities_column, table_column = st.columns([0.5, 0.5])
+    with entities_column:
+        all_sections = {e.metadata["section_name"] for e in focus_document.reading_order_sections}
+        entity_type_choice = st.multiselect(
+            label="Choose which entity types to display", options=MAT_IE_TYPES, default=None
+        )
+        section_choice = st.multiselect(
+            label="Choose sections from which to display entities",
+            options=all_sections,
+            default=None,
+        )
+        entities = get_matie_entities(
+            focus_document, allowed_sections=section_choice, allowed_types=entity_type_choice
+        )
+        st.write(f"Found {len(entities)} entities:")
+        st.dataframe(
+            pd.DataFrame(entities),
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "sentence_context": TextColumn(label="Sentence Context", width="large"),
+                "entity_type": TextColumn("Entity Type", width=None),
+                "entity_text": TextColumn("Text", width=None),
+                "entity_section": TextColumn("Section", width=None),
+            },
+        )
+
+with annotations_view:
     doc_vis_column, sections_column = st.columns([0.4, 0.6])
 
     with doc_vis_column:
