@@ -121,7 +121,7 @@ def shrink_box(box, shrink_factor):
     width_diff = box.w - new_width
     height_diff = box.h - new_height
 
-    return Box(box.l + width_diff / 2, box.t + width_diff / 2, new_width, new_height, box.page)
+    return Box(box.l + width_diff / 2, box.t + height_diff / 2, new_width, new_height, box.page)
 
 
 def convert_table_mapping_to_boxes_and_text(header_to_column_mapping, table_entity, doc, shrink):
@@ -142,7 +142,7 @@ def convert_table_mapping_to_boxes_and_text(header_to_column_mapping, table_enti
 
 
 class TableStructurePredictor(BasePredictor):
-    def __init__(self, model, device, shrink=0.95):
+    def __init__(self, model, device, shrink=0.9):
         self.model = model.to(device)
         self.shrink = shrink
 
