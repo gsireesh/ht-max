@@ -1,21 +1,23 @@
 MAT_IE_COLORS = {
     "Participating_Material": "tomato",
-    "Phase": "tomato",
+    "Phase": "cornflowerblue",
     "Property": "lightgreen",
-    "Result": "lightgreen",
+    "Result": "mediumpurple",
     "Microstructure": "cornflowerblue",
-    "Phenomenon": "lightgreen",
+    "Phenomenon": "mediumpurple",
     "Synthesis": "orange",
     "Material": "tomato",
     "Environment": "orange",
-    "Descriptor": "tomato",
+    "Descriptor": "mediumpurple",
     "Number": "lightgrey",
     "Amount_Unit": "lightgrey",
     "MStructure": "cornflowerblue",
-    "Operation": "orange",
+    "Operation": "mediumpurple",
     "Characterization": "gold",
     "Application": "lightgreen",
 }
+
+# result and phenomenon should be the same
 
 MAT_IE_TYPES = list(MAT_IE_COLORS.keys())
 
