@@ -141,11 +141,12 @@ def visualize_matIE_annotations(paragraph_entity, spacy_pipeline):
     return para_doc
 
 
-def get_table_image(table_entity: Entity, doc: Document):
+def get_table_image(table_entity: Entity, doc: Document, page_image=None):
     if len(table_entity.boxes) > 1:
         raise AssertionError("Table has more than one box!!")
     box = table_entity.boxes[0]
-    page_image = doc.pages[box.page].images[0].pilimage
+    if page_image is None:
+        page_image = doc.pages[box.page].images[0].pilimage
     page_w, page_h = page_image.size
     table_image = page_image.crop(
         (
