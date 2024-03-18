@@ -124,6 +124,17 @@ def convert_table_mapping_to_boxes_and_text(header_to_column_mapping, table_enti
     return all_cell_boxes, table_text_repr
 
 
+def get_nearby_captions(table, doc, expansion_factor):
+    box = table.boxes[0]
+
+    exp_h = expansion_factor * box.h
+    diff_h = exp_h - box.h
+
+    search_box = Box(l=box.l, t=box.t - diff_h / 2, w=box.w, h=exp_h, page=box.page)
+    potential_captions = doc.find(query=search_box, name="captions")
+    return potential_captions
+
+
 class TableStructurePredictor(BasePredictor):
     def __init__(self, model, device, shrink=0.9):
         self.model = model.to(device)
@@ -152,6 +163,17 @@ class TableStructurePredictor(BasePredictor):
 
             table.metadata["cell_boxes"] = table_boxes
             table.metadata["table_dict"] = table_dict
+            candidate_table_captions = get_nearby_captions(table, doc, expansion_factor=1.4)
+            if candidate_table_captions:
+                if len(candidate_table_captions) > 1:
+                    best_candidate = None
+                    min_dist = 1
+                    for caption in candidate_table_captions:
+                        if abs(caption.boxes[0].t - table.boxes[0].t) < min_dist:
+                            best_candidate = caption
+                else:
+                    best_candidate = candidate_table_captions[0]
+                table.metadata["caption_id"] = best_candidate.id
 
         return []
 
