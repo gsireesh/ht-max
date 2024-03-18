@@ -13,7 +13,7 @@ MAT_IE_COLORS = {
     "Amount_Unit": "lightgrey",
     "MStructure": "cornflowerblue",
     "Operation": "orange",
-    "Characterization": "yellow",
+    "Characterization": "gold",
     "Application": "lightgreen",
 }
 

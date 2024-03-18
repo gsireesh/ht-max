@@ -6,24 +6,7 @@ from transformers import TableTransformerForObjectDetection
 
 from papermage import Box, Document, Entity, TablesFieldName
 from papermage.predictors import BasePredictor
-from papermage_components.utils import get_text_in_box, globalize_bbox_coordinates
-
-
-def get_table_image(table_entity: Entity, doc: Document):
-    if len(table_entity.boxes) > 1:
-        raise AssertionError("Table has more than one box!!")
-    box = table_entity.boxes[0]
-    page_image = doc.pages[box.page].images[0].pilimage
-    page_w, page_h = page_image.size
-    table_image = page_image.crop(
-        (
-            box.l * page_w,
-            box.t * page_h,
-            (box.l + box.w) * page_w,
-            (box.t + box.h) * page_h,
-        )
-    )
-    return table_image
+from papermage_components.utils import get_table_image, get_text_in_box, globalize_bbox_coordinates
 
 
 class MaxResize(object):
