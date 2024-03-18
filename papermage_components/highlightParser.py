@@ -33,6 +33,11 @@ def convert_rect_to_papermage(rect, page, page_number):
     return Box(l=left, t=top, w=width, h=height, page=page_number)
 
 
+def vertical_shrink(box, factor):
+    top_diff = (1 - factor) * box.h / 2
+    return Box(box.l, box.t + top_diff, box.w, box.h * factor, box.page)
+
+
 def get_highlight_entities_from_pdf(pdf_filename: str, doc: Document) -> list[Entity]:
     highlight_entities = []
     with fitz.open(pdf_filename) as pdf:
@@ -49,11 +54,15 @@ def get_highlight_entities_from_pdf(pdf_filename: str, doc: Document) -> list[En
 
                 if len(vertices) == 4:
                     box = fitz.Quad(vertices).rect
-                    entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
+                    entity_boxes.append(
+                        vertical_shrink(convert_rect_to_papermage(box, page, page_number), 0.5)
+                    )
                 else:
                     for j in range(0, len(vertices), 4):
                         box = fitz.Quad(vertices[j : j + 4]).rect
-                        entity_boxes.append(convert_rect_to_papermage(box, page, page_number))
+                        entity_boxes.append(
+                            vertical_shrink(convert_rect_to_papermage(box, page, page_number), 0.5)
+                        )
 
                 # get annotation color, and then type
                 color = annotation.colors["stroke"]

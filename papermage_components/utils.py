@@ -113,14 +113,47 @@ def annotate_entities_on_doc(entities_by_type, spacy_doc, para_offset):
             e_end_char = entity.spans[0].end - para_offset
 
             span = spacy_doc.char_span(e_start_char, e_end_char, label=e_type)
-            all_spans.append(span)
-
+            if span is not None:
+                all_spans.append(span)
     spacy_doc.set_ents(all_spans)
 
 
-def visualize_paragraph(paragraph_entity, spacy_pipeline):
+def visualize_highlights(paragraph_entity, spacy_pipeline):
+    entities_by_type = {}
+    for e in paragraph_entity.annotation_highlights:
+        e_type = e.metadata["annotation_type"]
+        if e_type not in entities_by_type:
+            entities_by_type[e_type] = []
+        entities_by_type[e_type].append(e)
+
+    para_doc = spacy_pipeline(paragraph_entity.text.replace("\n", " "))
+    para_offset = paragraph_entity.spans[0].start
+    if entities_by_type:
+        annotate_entities_on_doc(entities_by_type, para_doc, para_offset)
+    return para_doc
+
+
+def visualize_matIE_annotations(paragraph_entity, spacy_pipeline):
     entities_by_type = {e_type: getattr(paragraph_entity, e_type) for e_type in MAT_IE_TYPES}
     para_doc = spacy_pipeline(paragraph_entity.text.replace("\n", " "))
     para_offset = paragraph_entity.spans[0].start
     annotate_entities_on_doc(entities_by_type, para_doc, para_offset)
     return para_doc
+
+
+def get_table_image(table_entity: Entity, doc: Document, page_image=None):
+    if len(table_entity.boxes) > 1:
+        raise AssertionError("Table has more than one box!!")
+    box = table_entity.boxes[0]
+    if page_image is None:
+        page_image = doc.pages[box.page].images[0].pilimage
+    page_w, page_h = page_image.size
+    table_image = page_image.crop(
+        (
+            box.l * page_w,
+            box.t * page_h,
+            (box.l + box.w) * page_w,
+            (box.t + box.h) * page_h,
+        )
+    )
+    return table_image

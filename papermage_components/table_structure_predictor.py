@@ -6,24 +6,7 @@ from transformers import TableTransformerForObjectDetection
 
 from papermage import Box, Document, Entity, TablesFieldName
 from papermage.predictors import BasePredictor
-from papermage_components.utils import get_text_in_box, globalize_bbox_coordinates
-
-
-def get_table_image(table_entity: Entity, doc: Document):
-    if len(table_entity.boxes) > 1:
-        raise AssertionError("Table has more than one box!!")
-    box = table_entity.boxes[0]
-    page_image = doc.pages[box.page].images[0].pilimage
-    page_w, page_h = page_image.size
-    table_image = page_image.crop(
-        (
-            box.l * page_w,
-            box.t * page_h,
-            (box.l + box.w) * page_w,
-            (box.t + box.h) * page_h,
-        )
-    )
-    return table_image
+from papermage_components.utils import get_table_image, get_text_in_box, globalize_bbox_coordinates
 
 
 class MaxResize(object):
@@ -131,14 +114,25 @@ def convert_table_mapping_to_boxes_and_text(header_to_column_mapping, table_enti
     for header_cell, row_cells in header_to_column_mapping.items():
         table_box = table_entity.boxes[0]
         header_box = shrink_box(globalize_bbox_coordinates(header_cell, table_box, doc), shrink)
-        all_cell_boxes.append(header_box)
+        all_cell_boxes.append(header_box.to_json())
         header_text = get_text_in_box(header_box, doc)
         table_text_repr[header_text] = []
         for a_cell in row_cells:
             cell_box = shrink_box(globalize_bbox_coordinates(a_cell, table_box, doc), shrink)
-            all_cell_boxes.append(cell_box)
+            all_cell_boxes.append(cell_box.to_json())
             table_text_repr[header_text].append(get_text_in_box(cell_box, doc))
     return all_cell_boxes, table_text_repr
+
+
+def get_nearby_captions(table, doc, expansion_factor):
+    box = table.boxes[0]
+
+    exp_h = expansion_factor * box.h
+    diff_h = exp_h - box.h
+
+    search_box = Box(l=box.l, t=box.t - diff_h / 2, w=box.w, h=exp_h, page=box.page)
+    potential_captions = doc.find(query=search_box, name="captions")
+    return potential_captions
 
 
 class TableStructurePredictor(BasePredictor):
@@ -169,6 +163,17 @@ class TableStructurePredictor(BasePredictor):
 
             table.metadata["cell_boxes"] = table_boxes
             table.metadata["table_dict"] = table_dict
+            candidate_table_captions = get_nearby_captions(table, doc, expansion_factor=1.4)
+            if candidate_table_captions:
+                if len(candidate_table_captions) > 1:
+                    best_candidate = None
+                    min_dist = 1
+                    for caption in candidate_table_captions:
+                        if abs(caption.boxes[0].t - table.boxes[0].t) < min_dist:
+                            best_candidate = caption
+                else:
+                    best_candidate = candidate_table_captions[0]
+                table.metadata["caption_id"] = best_candidate.id
 
         return []
 
