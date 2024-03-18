@@ -28,6 +28,31 @@ def get_matie_entities(doc, allowed_sections, allowed_types):
                     "entity_text": entity.text,
                     "entity_section": section_name,
                     "sentence_context": sentence_context,
+                    "source_model": "MatIE",
+                }
+            )
+    return all_entities
+
+
+def get_gpt_entities(doc, allowed_sections, allowed_types):
+    all_entities = []
+    for section in doc.reading_order_sections:
+        section_name = section.metadata["section_name"]
+        if section_name not in allowed_sections:
+            continue
+        if (gpt_entities := section.metadata.get("gpt_recognized_entities")) is None:
+            continue
+        for entity in gpt_entities:
+            entity_type = entity.get("entity_type").replace(" ", "_")
+            if entity_type not in allowed_types:
+                continue
+            all_entities.append(
+                {
+                    "entity_type": entity_type,
+                    "entity_text": entity.get("entity_string"),
+                    "sentence_context": entity.get("entity_context"),
+                    "entity_section": section_name,
+                    "source_model": "GPT-3.5",
                 }
             )
     return all_entities
@@ -41,6 +66,9 @@ def get_tables(doc, filter_string):
 
         caption_id = table.metadata.get("caption_id")
         caption = focus_document.captions[caption_id].text if caption_id else ""
+        if caption:
+            substring_idx = caption.lower().index("table")
+            caption = caption[substring_idx:]
 
         filter_match = filter_match or filter_string in caption.lower()
         if not table_dict or not filter_match:
@@ -69,9 +97,20 @@ with entities_column:
         options=all_sections,
         default=None,
     )
-    entities = get_matie_entities(
-        focus_document, allowed_sections=section_choice, allowed_types=entity_type_choice
-    )
+
+    show_matie_entities = st.toggle("Show MatIE Entities")
+    show_gpt_entities = st.toggle("Show GPT Entities")
+
+    entities = []
+    if show_matie_entities:
+        entities = entities + get_matie_entities(
+            focus_document, allowed_sections=section_choice, allowed_types=entity_type_choice
+        )
+    if show_gpt_entities:
+        entities = entities + get_gpt_entities(
+            focus_document, allowed_sections=section_choice, allowed_types=entity_type_choice
+        )
+
     st.write(f"Found {len(entities)} entities:")
     st.dataframe(
         pd.DataFrame(entities),

@@ -100,15 +100,35 @@ with sections_column:
             )
             st.markdown("---")
             st.write("### MatIE Entities")
-            matIE_spacy_doc = visualize_matIE_annotations(entity, get_spacy_pipeline())
-            spacy_streamlit.visualize_ner(
-                matIE_spacy_doc,
-                labels=MAT_IE_TYPES,
-                show_table=False,
-                displacy_options={"colors": MAT_IE_COLORS},
-                key="matIE_highlights",
-                title=None,
-            )
+            show_matie_entities = st.toggle("Show MatIE Entities", value=True)
+            if show_matie_entities:
+                matIE_spacy_doc = visualize_matIE_annotations(entity, get_spacy_pipeline())
+                spacy_streamlit.visualize_ner(
+                    matIE_spacy_doc,
+                    labels=MAT_IE_TYPES,
+                    show_table=False,
+                    displacy_options={"colors": MAT_IE_COLORS},
+                    key="matIE_highlights",
+                    title=None,
+                )
+            st.markdown("---")
+            st.write("### GPT-3.5 Entities")
+            show_gpt_entities = st.toggle("Show GPT-3.5 Entities", value=True)
+            if show_gpt_entities:
+                gpt_entities = entity.metadata.get("gpt_recognized_entities")
+                if gpt_entities:
+                    formatted_entities = []
+                    for e in gpt_entities:
+                        entity_type = e.get("entity_type").replace(" ", "_")
+
+                        formatted_entities.append(
+                            {
+                                "entity_type": entity_type,
+                                "entity_text": e.get("entity_string"),
+                                "sentence_context": e.get("entity_context"),
+                            }
+                        )
+                    st.dataframe(pd.DataFrame(gpt_entities))
 
     # table by id
     elif isinstance(section_name, int):
