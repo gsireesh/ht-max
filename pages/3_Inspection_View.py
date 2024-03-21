@@ -111,7 +111,7 @@ with doc_vis_column:
     page_width, page_height = highlighted_image.pilimage.size
     ratio = page_height / page_width
 
-    image_width = st_dimensions(key="doc_vis")["width"]
+    image_width = 726  # st_dimensions(key="doc_vis")["width"]
     image_height = image_width * ratio
 
     image_coords = streamlit_image_coordinates(
