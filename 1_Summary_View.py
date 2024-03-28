@@ -18,6 +18,8 @@ def get_matie_entities(doc, allowed_sections, allowed_types):
             continue
         entities = getattr(doc, matie_type)
         for entity in entities:
+            if not entity.reading_order_sections:
+                continue
             section_name = entity.reading_order_sections[0].metadata["section_name"]
             if section_name not in allowed_sections:
                 continue
@@ -67,7 +69,7 @@ def get_tables(doc, filter_string):
         caption_id = table.metadata.get("caption_id")
         caption = focus_document.captions[caption_id].text if caption_id else ""
         if caption:
-            substring_idx = caption.lower().index("table")
+            substring_idx = caption.lower().index("table") if "table" in caption.lower() else 0
             caption = caption[substring_idx:]
 
         filter_match = filter_match or filter_string in caption.lower()
@@ -142,6 +144,6 @@ with table_column:
             caption_id = table.metadata.get("caption_id")
             if caption_id:
                 caption = focus_document.captions[caption_id].text
-                substring_idx = caption.lower().index("table")
+                substring_idx = caption.lower().index("table") if "table" in caption.lower() else 0
                 st.write(f"**Identified Caption**: {caption[substring_idx:]}")
             st.write(f"From page {table_page + 1}")
