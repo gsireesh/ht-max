@@ -143,11 +143,12 @@ class MatIEPredictor(BasePredictor):
             paragraph_order = paragraph.metadata["paragraph_reading_order"]
             # TODO: make this more robust!! This implicitly assumes a paragraph has only one span.
             paragraph_text = paragraph.text.replace("\n", " ")
-            input_paragraph_starts[(section_name, paragraph_order)] = paragraph.spans[0].start
+            if len(paragraph.spans) != 0:
+                input_paragraph_starts[(section_name, paragraph_order)] = paragraph.spans[0].start
 
-            input_paragraphs[(section_name, paragraph_order)] = self.generate_txt(
-                self.curr_file, paragraph_text, section_name, paragraph_order
-            )
+                input_paragraphs[(section_name, paragraph_order)] = self.generate_txt(
+                    self.curr_file, paragraph_text, section_name, paragraph_order
+                )
 
         print("Annotating temp files")
         self.run_matIE()
@@ -156,14 +157,20 @@ class MatIEPredictor(BasePredictor):
         annotated_sentences = {}
         entities = {}
         relations = {}
-        for start, end in input_paragraphs:
-            folder_name = f'{self.output_folder}{self.curr_file.replace(" ", "_")}'
-            with open(os.path.join(folder_name, f"{start}-{end}.txt")) as f:
-                annotated_sentences[(start, end)] = f.read()
-            with open(os.path.join(folder_name, f"{start}-{end}.ann")) as f:
+        for section_name, paragraph in input_paragraphs:
+            folder_name = os.path.join(
+                self.output_folder, f'{self.curr_file.replace(" ", "_").replace("/", "_")}'
+            )
+            with open(
+                os.path.join(folder_name, f"{section_name}-{paragraph}.txt".replace("/", "_"))
+            ) as f:
+                annotated_sentences[(section_name, paragraph)] = f.read()
+            with open(
+                os.path.join(folder_name, f"{section_name}-{paragraph}.ann".replace("/", "_"))
+            ) as f:
                 ann_content = parse_ann_content(f.read())
-                entities[(start, end)] = ann_content["entities"]
-                relations[(start, end)] = ann_content["relations"]
+                entities[(section_name, paragraph)] = ann_content["entities"]
+                relations[(section_name, paragraph)] = ann_content["relations"]
 
         fixed_entities = []
         for (key, input_text), paragraph in zip(
@@ -183,8 +190,10 @@ class MatIEPredictor(BasePredictor):
         return predictions
 
     def generate_txt(self, filename, paragraph_text, section_name, reading_order):
-        folder_name = f'{self.output_folder}{filename.replace(" ", "_")}'
-        file_path = f"{folder_name}/{section_name}-{reading_order}.txt"
+        folder_name = f'{self.output_folder}{filename.replace(" ", "_").replace("/", "_")}'
+        file_path = os.path.join(
+            folder_name, f"{section_name}-{reading_order}.txt".replace("/", "_")
+        )
         os.makedirs(folder_name, exist_ok=True)
 
         with open(file_path, "w", encoding="utf-8") as file:
