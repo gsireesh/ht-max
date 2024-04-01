@@ -6,7 +6,7 @@ from papermage.visualizers import plot_entities_on_page
 import streamlit as st
 import spacy
 
-PARSED_PAPER_FOLDER = "data/AM_Creep_Papers_parsed"
+PARSED_PAPER_FOLDER = "data/Midyear_Review_Papers_Parsed"
 
 
 def load_document(doc_filename):

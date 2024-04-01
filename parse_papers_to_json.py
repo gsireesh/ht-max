@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 
 import fire
 from tqdm.auto import tqdm
@@ -34,6 +35,7 @@ def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_pre
         if pdf_filename.lower().endswith(".pdf")
     ]
 
+    failed_files = []
     for pdf_filename in tqdm(pdf_list):
         output_path = os.path.join(output_folder, pdf_filename.lower().replace(".pdf", ".json"))
 
@@ -47,6 +49,10 @@ def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_pre
                 json.dump(parsed_paper.to_json(), f, indent=4)
         except Exception as e:
             logging.error(f"Failed to parse paper {pdf_filename}", exc_info=True)
+            failed_files.append({"filename": pdf_filename, "error_class": str(e)})
+
+    with open("data/failed_files.json", "w") as f:
+        json.dump(failed_files, f)
 
 
 if __name__ == "__main__":
