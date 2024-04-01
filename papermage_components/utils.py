@@ -68,37 +68,38 @@ def merge_overlapping_entities(entities):
     )
 
     merged_entities = []
-    consumed_entities = set()
-    for entity in entities:
-        if entity in consumed_entities:
+    consumed_ids = set()
+    for i, entity in enumerate(entities):
+        if i in consumed_ids:
             continue
+        match_ids = set()
         for span in entity.spans:
-            match_ids = [
-                matched_id for _start, _end, matched_id in index.find_overlap(span.start, span.end)
-            ]
-            overlapping_entities = [entities[i] for i in match_ids]
-            if len(overlapping_entities) == 1:
-                merged_entities.append(entity)
-            elif len(overlapping_entities) > 1:
-                all_spans = list(
-                    itertools.chain(*[entity.spans for entity in overlapping_entities])
+            match_ids.update(
+                [
+                    matched_id
+                    for _start, _end, matched_id in index.find_overlap(span.start, span.end)
+                ]
+            )
+        overlapping_entities = [entities[i] for i in match_ids if i not in consumed_ids]
+        if len(overlapping_entities) == 1:
+            merged_entities.append(entity)
+        elif len(overlapping_entities) > 1:
+            all_spans = list(itertools.chain(*[entity.spans for entity in overlapping_entities]))
+            if entity.boxes is not None:
+                all_boxes = list(
+                    itertools.chain(*[entity.boxes for entity in overlapping_entities])
                 )
-                if entity.boxes is not None:
-                    all_boxes = list(
-                        itertools.chain(*[entity.boxes for entity in overlapping_entities])
-                    )
-                else:
-                    all_boxes = None
+            else:
+                all_boxes = None
 
-                merged_entities.append(
-                    Entity(
-                        spans=[Span.create_enclosing_span(all_spans)],
-                        boxes=all_boxes,
-                        metadata=overlapping_entities[0].metadata,
-                    )
+            merged_entities.append(
+                Entity(
+                    spans=[Span.create_enclosing_span(all_spans)],
+                    boxes=all_boxes,
+                    metadata=list(overlapping_entities)[0].metadata,
                 )
-                consumed_entities.update(overlapping_entities)
-                break
+            )
+            consumed_ids.update(match_ids)
 
     return merged_entities
 
@@ -120,7 +121,7 @@ def annotate_entities_on_doc(entities_by_type, spacy_doc, para_offset):
 
 def visualize_highlights(paragraph_entity, spacy_pipeline):
     entities_by_type = {}
-    for e in paragraph_entity.annotation_highlights:
+    for e in getattr(paragraph_entity, "annotation_highlights", []):
         e_type = e.metadata["annotation_type"]
         if e_type not in entities_by_type:
             entities_by_type[e_type] = []
@@ -134,7 +135,7 @@ def visualize_highlights(paragraph_entity, spacy_pipeline):
 
 
 def visualize_matIE_annotations(paragraph_entity, spacy_pipeline):
-    entities_by_type = {e_type: getattr(paragraph_entity, e_type) for e_type in MAT_IE_TYPES}
+    entities_by_type = {e_type: getattr(paragraph_entity, e_type, []) for e_type in MAT_IE_TYPES}
     para_doc = spacy_pipeline(paragraph_entity.text.replace("\n", " "))
     para_offset = paragraph_entity.spans[0].start
     annotate_entities_on_doc(entities_by_type, para_doc, para_offset)

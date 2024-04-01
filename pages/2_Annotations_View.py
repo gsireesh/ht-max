@@ -87,7 +87,7 @@ with sections_column:
         )
 
         for entity in section_entities:
-            entity_highlights = entity.annotation_highlights
+            entity_highlights = getattr(entity, "annotation_highlights", [])
             highlight_spacy_doc = visualize_highlights(entity, get_spacy_pipeline())
             st.write("### Highlighted Entities")
             spacy_streamlit.visualize_ner(
@@ -160,7 +160,7 @@ with doc_vis_column:
     page_width, page_height = highlighted_image.pilimage.size
     ratio = page_height / page_width
 
-    image_width = 726  #  st_dimensions(key="doc_vis")["width"]
+    image_width = st_dimensions(key="doc_vis")["width"]
 
     image_height = image_width * ratio
 

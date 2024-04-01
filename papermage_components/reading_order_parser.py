@@ -25,6 +25,9 @@ from papermage_components.utils import get_spans_from_boxes, merge_overlapping_e
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
+IN_PARAGRAPH_DISTANCE_TOLERANCE = 0.025
+
+
 def get_page_dimensions(root: ET.Element) -> dict[int, tuple[float, float]]:
     page_size_root = root.find(".//tei:facsimile", NS)
     assert page_size_root is not None, "No facsimile found in Grobid XML"
@@ -105,7 +108,8 @@ def update_cover_span(cover, span):
 
 def group_boxes_by_column(boxes: list[Box]):
     horizontal_covers = []
-    groups_list = []
+    boxes_by_group = defaultdict(list)
+
     for box in boxes:
         left_limit = box.l
         right_limit = box.l + box.w
@@ -113,22 +117,21 @@ def group_boxes_by_column(boxes: list[Box]):
 
         if horizontal_covers:
             for i, cover in enumerate(horizontal_covers):
-                if box_span_intersects(cover, box_span, tol=0.01):
+                if (
+                    box_span_intersects(cover, box_span, tol=IN_PARAGRAPH_DISTANCE_TOLERANCE)
+                    and box.t - boxes_by_group[i][-1].t > -IN_PARAGRAPH_DISTANCE_TOLERANCE
+                ):
                     horizontal_covers[i] = update_cover_span(cover, box_span)
                     # this break implicitly *assumes* a columnar structure - if we e.g. have a piece
                     # of text that spans two columns, we won't find it
-                    groups_list.append(i)
+                    boxes_by_group[i].append(box)
                     break
             else:
-                groups_list.append(len(horizontal_covers))
+                boxes_by_group[len(horizontal_covers)].append(box)
                 horizontal_covers.append(box_span)
         else:
-            groups_list.append(len(horizontal_covers))
+            boxes_by_group[len(horizontal_covers)].append(box)
             horizontal_covers.append((left_limit, right_limit))
-
-    boxes_by_group = defaultdict(list)
-    for group, box in zip(groups_list, boxes):
-        boxes_by_group[group].append(box)
 
     return [Box.create_enclosing_box(box_group) for box_group in boxes_by_group.values()]
 
@@ -227,7 +230,6 @@ class GrobidReadingOrderParser(Parser):
                 paragraph_entities.append(paragraph_entity)
 
         merged_paragraphs = merge_overlapping_entities(paragraph_entities)
-
         doc.annotate_layer("reading_order_sections", merged_paragraphs)
 
         return doc
