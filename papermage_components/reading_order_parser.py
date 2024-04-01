@@ -25,6 +25,9 @@ from papermage_components.utils import get_spans_from_boxes, merge_overlapping_e
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 
 
+IN_PARAGRAPH_DISTANCE_TOLERANCE = 0.025
+
+
 def get_page_dimensions(root: ET.Element) -> dict[int, tuple[float, float]]:
     page_size_root = root.find(".//tei:facsimile", NS)
     assert page_size_root is not None, "No facsimile found in Grobid XML"
@@ -115,8 +118,8 @@ def group_boxes_by_column(boxes: list[Box]):
         if horizontal_covers:
             for i, cover in enumerate(horizontal_covers):
                 if (
-                    box_span_intersects(cover, box_span, tol=0.01)
-                    and box.t - boxes_by_group[i][-1].t > -0.01
+                    box_span_intersects(cover, box_span, tol=IN_PARAGRAPH_DISTANCE_TOLERANCE)
+                    and box.t - boxes_by_group[i][-1].t > -IN_PARAGRAPH_DISTANCE_TOLERANCE
                 ):
                     horizontal_covers[i] = update_cover_span(cover, box_span)
                     # this break implicitly *assumes* a columnar structure - if we e.g. have a piece
@@ -227,6 +230,6 @@ class GrobidReadingOrderParser(Parser):
                 paragraph_entities.append(paragraph_entity)
 
         merged_paragraphs = merge_overlapping_entities(paragraph_entities)
-        doc.annotate_layer("reading_order_sections", merged_paragraphs, require_disjoint=False)
+        doc.annotate_layer("reading_order_sections", merged_paragraphs)
 
         return doc
