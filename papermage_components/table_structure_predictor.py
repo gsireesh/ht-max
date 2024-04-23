@@ -98,29 +98,46 @@ def get_cell_coordinates_by_row(table_data):
     return table_representation
 
 
-def shrink_box(box, shrink_factor):
-    new_width = shrink_factor * box.w
-    new_height = shrink_factor * box.h
+def shrink_box(box, w_shrink_factor, h_shrink_factor):
+    new_width = w_shrink_factor * box.w
+    new_height = h_shrink_factor * box.h
     width_diff = box.w - new_width
     height_diff = box.h - new_height
 
     return Box(box.l + width_diff / 2, box.t + height_diff / 2, new_width, new_height, box.page)
 
 
-def convert_table_mapping_to_boxes_and_text(header_to_column_mapping, table_entity, doc, shrink):
+def convert_table_mapping_to_boxes_and_text(header_to_column_mapping, table_entity, doc, w_shrink, h_shrink):
     table_text_repr = {}
     all_cell_boxes = []
 
     for header_cell, row_cells in header_to_column_mapping.items():
+        
+        #print("row_cells:", row_cells)
+        #break
         table_box = table_entity.boxes[0]
-        header_box = shrink_box(globalize_bbox_coordinates(header_cell, table_box, doc), shrink)
+        header_box = shrink_box(globalize_bbox_coordinates(header_cell, table_box, doc), w_shrink, h_shrink)
+
         all_cell_boxes.append(header_box.to_json())
         header_text = get_text_in_box(header_box, doc)
+
+        print("header cell coor:", header_box)
+        print("header text: ", header_text)
+
         table_text_repr[header_text] = []
         for a_cell in row_cells:
-            cell_box = shrink_box(globalize_bbox_coordinates(a_cell, table_box, doc), shrink)
+            cell_box = shrink_box(globalize_bbox_coordinates(a_cell, table_box, doc), w_shrink, h_shrink)
             all_cell_boxes.append(cell_box.to_json())
             table_text_repr[header_text].append(get_text_in_box(cell_box, doc))
+
+            
+        #     print("column cell box coor: ", cell_box)
+        #     print("row cell text: ", get_text_in_box(cell_box, doc))
+
+        # print("\n")
+        # print("\n")
+            
+
     return all_cell_boxes, table_text_repr
 
 
@@ -136,9 +153,10 @@ def get_nearby_captions(table, doc, expansion_factor):
 
 
 class TableStructurePredictor(BasePredictor):
-    def __init__(self, model, device, shrink=0.9):
+    def __init__(self, model, device, w_shrink=0.81, h_shrink=0.72):
         self.model = model.to(device)
-        self.shrink = shrink
+        self.w_shrink = w_shrink
+        self.h_shrink = h_shrink
 
     @classmethod
     def from_model_name(
@@ -152,15 +170,20 @@ class TableStructurePredictor(BasePredictor):
         return [TablesFieldName]
 
     def _predict(self, doc: Document) -> List[Entity]:
+        
         for table in getattr(doc, TablesFieldName):
 
+
             table_image = get_table_image(table, doc)
+            
+            
             header_to_column_mapping = self.get_table_structure(table_image)
-
+            
+            
             table_boxes, table_dict = convert_table_mapping_to_boxes_and_text(
-                header_to_column_mapping, table, doc, self.shrink
+                header_to_column_mapping, table, doc, self.w_shrink, self.h_shrink
             )
-
+            
             table.metadata["cell_boxes"] = table_boxes
             table.metadata["table_dict"] = table_dict
             candidate_table_captions = get_nearby_captions(table, doc, expansion_factor=1.4)
@@ -174,6 +197,8 @@ class TableStructurePredictor(BasePredictor):
                 else:
                     best_candidate = candidate_table_captions[0]
                 table.metadata["caption_id"] = best_candidate.id
+
+            # n+=1
 
         return []
 
