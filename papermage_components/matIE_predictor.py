@@ -17,6 +17,10 @@ from papermage.magelib import (
 from papermage.predictors import BasePredictor
 from papermage.utils.annotate import group_by
 
+NER_MODEL_RELATIVE_PATH = "model"
+VOCAB_RELATIVE_PATH = "vpack_mat"
+DECODE_SCRIPT_RELATIVE_PATH = "decode.sh"
+
 
 @dataclass
 class MatIEEntity:
@@ -111,21 +115,25 @@ def parse_ann_content(ann_content):
 class MatIEPredictor(BasePredictor):
     def __init__(
         self,
-        NER_model_dir="",
-        vocab_dir="",
+        matIE_directory,
         output_folder="",
         gpu_id="0",
-        decode_script="",
     ):
-        self.NER_model_dir = NER_model_dir
-        self.vocab_dir = vocab_dir
+        self.NER_model_dir = os.path.join(matIE_directory, NER_MODEL_RELATIVE_PATH)
+        self.vocab_dir = os.path.join(matIE_directory, VOCAB_RELATIVE_PATH)
+        self.decode_script = os.path.join(matIE_directory, DECODE_SCRIPT_RELATIVE_PATH)
+
         self.output_folder = output_folder
         self.gpu_id = gpu_id
-        self.decode_script = decode_script
 
         # Initialize the NER class instance with the output directory
         print(
-            "NER_model_dir ", NER_model_dir, "vocab_dir", vocab_dir, "output_folder ", output_folder
+            "NER_model_dir ",
+            self.NER_model_dir,
+            "vocab_dir",
+            self.vocab_dir,
+            "output_folder ",
+            output_folder,
         )
         self.curr_file = ""
 

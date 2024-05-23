@@ -89,13 +89,11 @@ class MaterialsRecipe(Recipe):
         svm_word_predictor_path: str = "https://ai2-s2-research-public.s3.us-west-2.amazonaws.com/mmda/models/svm_word_predictor.tar.gz",
         scispacy_model: str = "en_core_sci_md",
         annotated_pdf_directory="data/AM_Creep_Papers_Annotated_2/",
-        grobid_server_url: str = "http://himalayan.lti.cs.cmu.edu:8070",
+        grobid_server_url: str = "",
         xml_out_dir: str = "data/grobid_xml",
-        NER_model_dir: str = "",  # the directory of the NER model
-        vocab_dir: str = "",  # the directory of the vocabulary
+        matIE_directory: str = "",
         output_folder: str = "",  # the directory of the vocabulary
         gpu_id: str = "0",
-        decode_script: str = "",  # the decode module
         dpi: int = 72,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -125,13 +123,13 @@ class MaterialsRecipe(Recipe):
         self.sent_predictor = SciSpacySentencePredictor(
             model_name=scispacy_model,
         )
-        self.matIE_predictor = MatIEPredictor(
-            NER_model_dir=NER_model_dir,
-            vocab_dir=vocab_dir,
-            output_folder=output_folder,
-            gpu_id=gpu_id,
-            decode_script=decode_script,
-        )
+
+        if matIE_directory:
+            self.matIE_predictor = MatIEPredictor(
+                matIE_directory=matIE_directory,
+                output_folder=output_folder,
+                gpu_id=gpu_id,
+            )
 
         self.table_structure_predictor = TableStructurePredictor.from_model_name()
 
