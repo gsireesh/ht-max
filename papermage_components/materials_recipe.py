@@ -92,7 +92,6 @@ class MaterialsRecipe(Recipe):
         grobid_server_url: str = "",
         xml_out_dir: str = "data/grobid_xml",
         matIE_directory: str = "",
-        output_folder: str = "",  # the directory of the vocabulary
         gpu_id: str = "0",
         dpi: int = 72,
     ):
@@ -127,7 +126,6 @@ class MaterialsRecipe(Recipe):
         if matIE_directory:
             self.matIE_predictor = MatIEPredictor(
                 matIE_directory=matIE_directory,
-                output_folder=output_folder,
                 gpu_id=gpu_id,
             )
 
@@ -150,8 +148,6 @@ class MaterialsRecipe(Recipe):
         images = self.rasterizer.rasterize(input_pdf_path=pdf, dpi=self.dpi)
         doc.annotate_images(images=list(images))
         self.rasterizer.attach_images(images=images, doc=doc)
-        self.matIE_predictor.curr_file = pdf.split("/")[-1][:-4]
-
         return self.from_doc(doc=doc)
 
     def from_doc(self, doc: Document) -> Document:

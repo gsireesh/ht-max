@@ -3,6 +3,7 @@ import difflib
 import os
 import re
 import subprocess
+from tempfile import TemporaryDirectory
 from typing import List, Tuple
 
 from papermage.magelib import (
@@ -20,6 +21,7 @@ from papermage.utils.annotate import group_by
 NER_MODEL_RELATIVE_PATH = "model"
 VOCAB_RELATIVE_PATH = "vpack_mat"
 DECODE_SCRIPT_RELATIVE_PATH = "decode.sh"
+WORKING_DIRECTORY = "data/matIE_annotation"
 
 
 @dataclass
@@ -116,14 +118,16 @@ class MatIEPredictor(BasePredictor):
     def __init__(
         self,
         matIE_directory,
-        output_folder="",
         gpu_id="0",
     ):
+        self.matIE_directory = matIE_directory
         self.NER_model_dir = os.path.join(matIE_directory, NER_MODEL_RELATIVE_PATH)
         self.vocab_dir = os.path.join(matIE_directory, VOCAB_RELATIVE_PATH)
         self.decode_script = os.path.join(matIE_directory, DECODE_SCRIPT_RELATIVE_PATH)
 
-        self.output_folder = output_folder
+        self.working_folder = WORKING_DIRECTORY
+        if not os.path.exists(self.working_folder):
+            os.makedirs(self.working_folder, exist_ok=True)
         self.gpu_id = gpu_id
 
         # Initialize the NER class instance with the output directory
@@ -133,9 +137,8 @@ class MatIEPredictor(BasePredictor):
             "vocab_dir",
             self.vocab_dir,
             "output_folder ",
-            output_folder,
+            self.working_folder,
         )
-        self.curr_file = ""
 
     @property
     def REQUIRED_DOCUMENT_FIELDS(self) -> List[str]:
@@ -144,6 +147,11 @@ class MatIEPredictor(BasePredictor):
     def _predict(self, doc: Document) -> Tuple[Prediction, ...]:
 
         print("Creating temporary input files")
+
+        doc_temp_folder = TemporaryDirectory(
+            dir=self.working_folder, prefix="matie_file_annotation_"
+        )
+
         input_paragraphs = {}
         input_paragraph_starts = {}
         for paragraph in doc.reading_order_sections:
@@ -155,7 +163,7 @@ class MatIEPredictor(BasePredictor):
                 input_paragraph_starts[(section_name, paragraph_order)] = paragraph.spans[0].start
 
                 input_paragraphs[(section_name, paragraph_order)] = self.generate_txt(
-                    self.curr_file, paragraph_text, section_name, paragraph_order
+                    doc_temp_folder.name, paragraph_text, section_name, paragraph_order
                 )
 
         print("Annotating temp files")
@@ -166,9 +174,7 @@ class MatIEPredictor(BasePredictor):
         entities = {}
         relations = {}
         for section_name, paragraph in input_paragraphs:
-            folder_name = os.path.join(
-                self.output_folder, f'{self.curr_file.replace(" ", "_").replace("/", "_")}'
-            )
+            folder_name = doc_temp_folder.name
             with open(
                 os.path.join(folder_name, f"{section_name}-{paragraph}.txt".replace("/", "_"))
             ) as f:
@@ -197,8 +203,7 @@ class MatIEPredictor(BasePredictor):
 
         return predictions
 
-    def generate_txt(self, filename, paragraph_text, section_name, reading_order):
-        folder_name = f'{self.output_folder}{filename.replace(" ", "_").replace("/", "_")}'
+    def generate_txt(self, folder_name, paragraph_text, section_name, reading_order):
         file_path = os.path.join(
             folder_name, f"{section_name}-{reading_order}.txt".replace("/", "_")
         )
@@ -207,52 +212,41 @@ class MatIEPredictor(BasePredictor):
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(paragraph_text)
 
-        os.makedirs(folder_name + "_copy", exist_ok=True)
-        with open(
-            file_path.replace(folder_name, folder_name + "_copy"), "w", encoding="utf-8"
-        ) as file:
-            file.write(paragraph_text)
-
         return paragraph_text
 
     def run_matIE(self):
-        for dir_name in os.listdir(self.output_folder):
-            # Rename the folder
-            if os.path.isdir(os.path.join(self.output_folder, dir_name)) and "copy" not in dir_name:
-                dir_path = os.path.join(self.output_folder, dir_name)
-                input_folder = dir_path
-                output_folder = dir_path
+        for dir_name in os.listdir(self.working_folder):
+            if (
+                not os.path.isdir(os.path.join(self.working_folder, dir_name))
+                or "_original" in dir_name
+            ):
+                continue
 
-                self.process_files_multiprocess(
-                    self.NER_model_dir,
-                    self.vocab_dir,
-                    input_folder,
-                    output_folder,
-                    self.gpu_id,
-                    self.decode_script,
-                )
+            dir_path = os.path.join(self.working_folder, dir_name)
+            input_folder = dir_path
+            output_folder = dir_path
 
-    def process_files_multiprocess(
-        self, model_dir, vocab_dir, input_folder, output_folder, gpu_id, decode_script
-    ):
+            self.process_files_multiprocess(
+                input_folder,
+                output_folder,
+            )
+
+    def process_files_multiprocess(self, input_folder, output_folder):
 
         env_vars = os.environ.copy()
-        env_vars["MODEL_DIR"] = model_dir
-        env_vars["VOCAB_DIR"] = vocab_dir
+        env_vars["MODEL_DIR"] = self.NER_model_dir
+        env_vars["VOCAB_DIR"] = self.vocab_dir
         env_vars["CUDA_VISIBLE_DEVICES"] = ""  # needs to fix later
+        # bizarrely, taking out the `../ht-max` from these paths breaks something in MatIE
         env_vars["INPUT_DIR"] = os.path.join("../ht-max", input_folder.replace("//", "/"))
         env_vars["OUTPUT_DIR"] = os.path.join("../ht-max", output_folder.replace("//", "/"))
         env_vars["EXTRA_ARGS"] = ""
 
-        subprocess.run(["chmod", "+x", decode_script], check=True)
+        subprocess.run(["chmod", "+x", self.decode_script], check=True)
         subprocess.run(
-            decode_script,
+            self.decode_script,
             shell=True,
             env=env_vars,
-            cwd="/Users/sireeshgururaja/src/MatIE",
+            cwd=self.matIE_directory,
             check=True,
         )
-
-    # Example usage
-    # matie = MatIE(NER_model_dir="path/to/model", vocab_dir="path/to/vocab", output_folder="path/to/output", gpu_id="0", decode_script="path/to/decode.sh")
-    # matie.run_matIE()
