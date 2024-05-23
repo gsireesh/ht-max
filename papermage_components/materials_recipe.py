@@ -128,6 +128,8 @@ class MaterialsRecipe(Recipe):
                 matIE_directory=matIE_directory,
                 gpu_id=gpu_id,
             )
+        else:
+            self.matIE_predictor = None
 
         self.table_structure_predictor = TableStructurePredictor.from_model_name()
 
@@ -159,9 +161,10 @@ class MaterialsRecipe(Recipe):
         sentences = self.sent_predictor.predict(doc=doc)
         doc.annotate_layer(name=SentencesFieldName, entities=sentences)
 
-        self.logger.info("Predicting MatIE Entities...")
-        matIE_entities = self.matIE_predictor.predict(doc=doc)
-        doc.annotate(matIE_entities)
+        if self.matIE_predictor is not None:
+            self.logger.info("Predicting MatIE Entities...")
+            matIE_entities = self.matIE_predictor.predict(doc=doc)
+            doc.annotate(matIE_entities)
 
         self.logger.info("Predicting blocks...")
         with warnings.catch_warnings():
