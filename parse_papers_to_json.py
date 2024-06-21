@@ -22,11 +22,8 @@ def get_doc_title(document: Document):
 
 def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_present: bool = False):
     recipe = MaterialsRecipe(
-        NER_model_dir="/Users/sireeshgururaja/src/MatIE/model",  # the directory of the NER model
-        vocab_dir="/Users/sireeshgururaja/src/MatIE/vpack_mat",  # the directory of the vocabulary
-        output_folder="data/AM_Creep_Papers_parsed_test/",  # the directory of the vocabulary
-        gpu_id="0",
-        decode_script="/Users/sireeshgururaja/src/MatIE/decode.sh",  # the decode module
+        matIE_directory="/Users/sireeshgururaja/src/MatIE",
+        grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
     )
 
     pdf_list = [
