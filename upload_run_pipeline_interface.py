@@ -1,3 +1,5 @@
+import os
+import re
 import warnings
 
 from papermage.magelib import (
@@ -12,9 +14,13 @@ from papermage.utils.annotate import group_by
 import streamlit as st
 
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
-
+from shared_utils import *
 
 ## resources
+
+UPLOADED_PDF_PATH = "data/uploaded_papers"
+
+
 @st.cache_resource
 def get_recipe():
     recipe = MaterialsRecipe(
@@ -156,6 +162,8 @@ def parse_pdf(pdf, recipe):
         with st.expander("Show stack trace"):
             st.write(e)
 
+    return doc
+
 
 with st.sidebar:
     with st.form("file_upload_form"):
@@ -166,8 +174,16 @@ with st.sidebar:
 
 if uploaded_file is not None:
     bytes_data = uploaded_file.read()
-    paper_filename = f"data/uploaded_papers/{uploaded_file.name}"
+    paper_filename = os.path.join(UPLOADED_PDF_PATH, uploaded_file.name)
     with open(paper_filename, "wb") as f:
         f.write(bytes_data)
     recipe = get_recipe()
-    parse_pdf(paper_filename, recipe)
+    parsed_paper = parse_pdf(paper_filename, recipe)
+    with open(
+        os.path.join(PARSED_PAPER_FOLDER, uploaded_file.name.replace("pdf", "json")), "w"
+    ) as f:
+        json.dump(parsed_paper.to_json(), f, indent=4)
+
+    st.session_state["focus_document"] = uploaded_file.name.replace("pdf", "json")
+    st.write("Done processing paper!")
+    st.balloons()
