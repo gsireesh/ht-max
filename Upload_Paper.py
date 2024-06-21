@@ -12,13 +12,33 @@ from papermage.magelib import (
 from papermage.predictors.word_predictors import make_text
 from papermage.utils.annotate import group_by
 import streamlit as st
+from streamlit_extras.stylable_container import stylable_container
 
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
 from shared_utils import *
 
+st.set_page_config(layout="wide")
+
+
 ## resources
 
 UPLOADED_PDF_PATH = "data/uploaded_papers"
+
+pagelink_style = """a[data-testid="stPageLink-NavLink"]
+{
+    border-radius: 0.5em;
+    border: 1px solid rgba(49, 51, 63, 0.2);
+    line-height: 2.0;
+    justify-content: center;
+    font-weight: 400;
+    }
+}
+
+a:hover {
+        border-color: rgb(255,75,75);
+        color: rgb(255,75,75);
+}
+"""
 
 
 @st.cache_resource
@@ -30,15 +50,11 @@ def get_recipe():
     return recipe
 
 
-st.title("Collage.")
-
-
 def parse_pdf(pdf, recipe):
 
     with st.status("Parsing PDF...") as status:
         try:
             doc = recipe.pdfplumber_parser.parse(input_pdf_path=pdf)
-            raise AssertionError
         except Exception as e:
             status.update(state="error")
             st.write(e)
@@ -129,25 +145,36 @@ def parse_pdf(pdf, recipe):
     return doc
 
 
-with st.sidebar:
+st.title("Welcome to Collage!")
+
+col1, col2 = st.columns([0.4, 0.6])
+with col1:
     with st.form("file_upload_form"):
         uploaded_file = st.file_uploader(
-            "Upload papers to get started.", type="pdf", accept_multiple_files=False
+            "Upload a paper to get started.", type="pdf", accept_multiple_files=False
         )
-        st.form_submit_button("Process uploaded papers")
+        st.form_submit_button("Process uploaded paper")
 
-if uploaded_file is not None:
-    bytes_data = uploaded_file.read()
-    paper_filename = os.path.join(UPLOADED_PDF_PATH, uploaded_file.name)
-    with open(paper_filename, "wb") as f:
-        f.write(bytes_data)
-    recipe = get_recipe()
-    parsed_paper = parse_pdf(paper_filename, recipe)
-    with open(
-        os.path.join(PARSED_PAPER_FOLDER, uploaded_file.name.replace("pdf", "json")), "w"
-    ) as f:
-        json.dump(parsed_paper.to_json(), f, indent=4)
+with col2:
+    if uploaded_file is not None:
+        bytes_data = uploaded_file.read()
+        paper_filename = os.path.join(UPLOADED_PDF_PATH, uploaded_file.name)
+        with open(paper_filename, "wb") as f:
+            f.write(bytes_data)
+        recipe = get_recipe()
+        parsed_paper = parse_pdf(paper_filename, recipe)
+        with open(
+            os.path.join(PARSED_PAPER_FOLDER, uploaded_file.name.replace("pdf", "json")), "w"
+        ) as f:
+            json.dump(parsed_paper.to_json(), f, indent=4)
 
-    st.session_state["focus_document"] = uploaded_file.name.replace("pdf", "json")
-    st.write("Done processing paper! Expand any failed sections above to see the stack trace.")
-    st.balloons()
+        st.session_state["focus_document"] = uploaded_file.name.replace("pdf", "json")
+        st.write("Done processing paper! Expand any failed sections above to see the stack trace.")
+        st.balloons()
+
+        with stylable_container(key="page_link_style", css_styles=pagelink_style):
+            st.page_link(
+                "pages/1_Summary_View.py",
+                label="View Summary of Annotations",
+                icon="🔍",
+            )
