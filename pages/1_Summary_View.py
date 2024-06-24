@@ -83,7 +83,13 @@ file_options = os.listdir(PARSED_PAPER_FOLDER)
 
 with st.sidebar:  # .form("File selector"):
     st.write("Select a pre-parsed file whose results to display")
-    file_selector = st.selectbox("Parsed file", options=file_options)
+    focus_file = st.session_state.get("focus_document")
+    file_selector = st.selectbox(
+        "Parsed file",
+        options=file_options,
+        index=file_options.index(focus_file) if focus_file else 0,
+    )
+    st.session_state["focus_document"] = file_selector
     focus_document = load_document(file_selector)
 
 
