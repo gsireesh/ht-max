@@ -12,7 +12,8 @@ fire==0.5.0
 pandas
 PyMuPDF==1.23.25
 spacy-streamlit==1.0.6
-streamlit==1.32.0
+streamlit==1.36.0
+streamlit-extras==0.4.3
 streamlit-dimensions==0.0.1
 streamlit-image-coordinates==0.1.6
 
