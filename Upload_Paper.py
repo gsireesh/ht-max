@@ -46,6 +46,7 @@ def get_recipe():
     recipe = MaterialsRecipe(
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
+        gpu_id="mps",
     )
     return recipe
 
@@ -138,6 +139,14 @@ def parse_pdf(pdf, recipe):
     with st.status("Predicting table structure...") as status:
         try:
             recipe.table_structure_predictor.predict(doc)
+        except Exception as e:
+            status.update(state="error")
+            st.write(e)
+
+    with st.status("Predicting with HuggingFace Model...") as status:
+        try:
+            entities = recipe.hf_predictor.predict(doc)
+            doc.annotate_layer(name="hf_entities", entities=entities)
         except Exception as e:
             status.update(state="error")
             st.write(e)
