@@ -62,7 +62,6 @@ def get_hf_tagger(model_name):
     return HfTokenClassificationPredictor(model_name, device="cpu")
 
 
-@st.cache_resource
 def parse_pdf(pdf, _recipe) -> Document:
 
     with st.status("Parsing PDF...") as status:
@@ -162,7 +161,7 @@ with col1:
 
     with st.container(border=True):
         st.write("### Add a HuggingFace Token Classification Model")
-        model_name_input = st.text_input(label="Model Name Filter")
+        model_name_input = st_keyup(label="Model Name Filter")
         hf_api = HfApi()
 
         results = hf_api.list_models(
@@ -179,7 +178,9 @@ with col1:
             model_name_col, use_model_col = st.columns([0.7, 0.3])
             model_name_col.write(f"{model_name}\n(⬇️ {result.downloads})")
             if use_model_col.button("Use this model", type="primary", key=f"use_{model_name}"):
-                st.session_state["custom_models"][model_name] = get_hf_tagger(model_name)
+                st.session_state["custom_models"][model_name.replace("/", "-")] = get_hf_tagger(
+                    model_name
+                )
 
 with col2:
     with st.form("file_upload_form"):

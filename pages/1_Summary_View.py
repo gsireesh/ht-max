@@ -11,6 +11,26 @@ from papermage_components.constants import (
 st.set_page_config(layout="wide")
 
 
+def get_hf_entities(doc, model_name, allowed_sections, allowed_types):
+    all_entities = []
+    for section in doc.reading_order_sections:
+        if section.metadata["section_name"] not in allowed_sections:
+            continue
+        for entity in getattr(section, f"ENTITIES_{model_name}"):
+            sentence_context = entity.sentences[0].text
+            all_entities.append(
+                {
+                    "entity_type": entity.metadata["entity_type"],
+                    "entity_text": entity.text,
+                    "entity_section": section.metadata["section_name"],
+                    "sentence_context": sentence_context,
+                    "source_model": model_name,
+                }
+            )
+
+    return all_entities
+
+
 def get_matie_entities(doc, allowed_sections, allowed_types):
     all_entities = []
     for matie_type in MAT_IE_TYPES:
@@ -98,16 +118,19 @@ with entities_column:
     st.write("## Tagged Entities")
     all_sections = {e.metadata["section_name"] for e in focus_document.reading_order_sections}
     entity_type_choice = st.multiselect(
-        label="Choose which entity types to display", options=MAT_IE_TYPES, default=None
+        label="Choose which entity types to display", options=MAT_IE_TYPES, default=MAT_IE_TYPES
     )
     section_choice = st.multiselect(
         label="Choose sections from which to display entities",
         options=all_sections,
-        default=None,
+        default=all_sections,
     )
 
     show_matie_entities = st.toggle("Show MatIE Entities")
     show_gpt_entities = st.toggle("Show GPT Entities")
+    show_models = {}
+    for predictor_name in st.session_state.get("custom_models", []):
+        show_models[predictor_name] = st.toggle(f"Show entities from {predictor_name}")
 
     entities = []
     if show_matie_entities:
@@ -118,6 +141,11 @@ with entities_column:
         entities = entities + get_gpt_entities(
             focus_document, allowed_sections=section_choice, allowed_types=entity_type_choice
         )
+    for predictor_name, show in show_models.items():
+        if show:
+            entities = entities + get_hf_entities(
+                focus_document, predictor_name, allowed_sections=section_choice, allowed_types=None
+            )
 
     st.write(f"Found {len(entities)} entities:")
     st.dataframe(
