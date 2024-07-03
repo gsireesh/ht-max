@@ -8,6 +8,8 @@ import spacy
 
 PARSED_PAPER_FOLDER = "data/Midyear_Review_Papers_Parsed"
 
+CUSTOM_MODELS_KEY = "custom_models"
+
 
 @st.cache_resource
 def load_document(doc_filename):

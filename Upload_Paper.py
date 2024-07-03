@@ -43,8 +43,14 @@ a:hover {
         color: rgb(255,75,75);
 }
 """
-if "custom_models" not in st.session_state:
-    st.session_state["custom_models"] = set()
+
+
+def reset_custom_models():
+    st.session_state[CUSTOM_MODELS_KEY] = set()
+
+
+if CUSTOM_MODELS_KEY not in st.session_state:
+    reset_custom_models()
 
 
 @st.cache_resource
@@ -154,10 +160,12 @@ with col1:
         st.checkbox("Predict blocks", value=True, disabled=True)
         st.checkbox("Predict VILA", value=True, disabled=True)
 
-    if st.session_state.get("custom_models"):
+    if st.session_state.get(CUSTOM_MODELS_KEY):
         with st.status("Additional Models:", expanded=True):
-            for model_name in st.session_state["custom_models"]:
+            for model_name in st.session_state[CUSTOM_MODELS_KEY]:
                 st.write(model_name)
+
+            st.button("Clear all", on_click=reset_custom_models())
 
     with st.container(border=True):
         st.write("### Add a HuggingFace Token Classification Model")
@@ -181,7 +189,7 @@ with col1:
                 "Use this model",
                 type="primary",
                 key=f"use_{model_name}",
-                on_click=lambda custom_model_name: st.session_state["custom_models"].add(
+                on_click=lambda custom_model_name: st.session_state[CUSTOM_MODELS_KEY].add(
                     custom_model_name.replace("/", "_")
                 ),
                 kwargs={"custom_model_name": model_name},
@@ -205,7 +213,7 @@ with col2:
 
         parsed_paper = parse_pdf(paper_filename, recipe)
 
-        for model_name in set(st.session_state["custom_models"]):
+        for model_name in set(st.session_state[CUSTOM_MODELS_KEY]):
             with st.status(f"Running model {model_name}") as model_status:
                 try:
                     predictor = get_hf_tagger(model_name)
