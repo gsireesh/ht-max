@@ -1,25 +1,26 @@
+import json
 import os
-import re
 import warnings
 
 from huggingface_hub import HfApi
 from papermage.magelib import (
     BlocksFieldName,
     Box,
+    Document,
     SentencesFieldName,
     TokensFieldName,
     WordsFieldName,
 )
-import pandas as pd
 from papermage.predictors.word_predictors import make_text
 from papermage.utils.annotate import group_by
 import streamlit as st
 from streamlit_extras.st_keyup import st_keyup
 from streamlit_extras.stylable_container import stylable_container
 
-from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
-from shared_utils import *
+from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
+from shared_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
+
 
 st.set_page_config(layout="wide")
 
@@ -50,14 +51,14 @@ def reset_custom_models():
 
 
 if CUSTOM_MODELS_KEY not in st.session_state:
-    reset_custom_models()
+    st.session_state[CUSTOM_MODELS_KEY] = set()
 
 
 @st.cache_resource
 def get_recipe():
     recipe = MaterialsRecipe(
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
-        grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
+        grobid_server_url="http://localhost:8070",
         gpu_id="mps",
     )
     return recipe
@@ -66,6 +67,46 @@ def get_recipe():
 @st.cache_resource
 def get_hf_tagger(model_name):
     return HfTokenClassificationPredictor(model_name, device="cpu")
+
+
+def process_paper(uploaded_paper, container):
+    with container:
+        if uploaded_paper is not None:
+            bytes_data = uploaded_paper.read()
+            paper_filename = os.path.join(UPLOADED_PDF_PATH, uploaded_paper.name)
+            with open(paper_filename, "wb") as f:
+                f.write(bytes_data)
+            recipe = get_recipe()
+
+            parsed_paper = parse_pdf(paper_filename, recipe)
+
+            for model_name in set(st.session_state[CUSTOM_MODELS_KEY]):
+                with st.status(f"Running model {model_name}") as model_status:
+                    try:
+                        predictor = get_hf_tagger(model_name)
+                        model_entities = predictor.predict(parsed_paper)
+                        parsed_paper.annotate_layer(f"ENTITIES_{model_name}", model_entities)
+                    except Exception as e:
+                        st.write(e)
+                        model_status.update("error")
+
+            with open(
+                os.path.join(PARSED_PAPER_FOLDER, uploaded_paper.name.replace("pdf", "json")), "w"
+            ) as f:
+                json.dump(parsed_paper.to_json(), f, indent=4)
+
+            st.session_state["focus_document"] = uploaded_paper.name.replace("pdf", "json")
+            st.write(
+                "Done processing paper! Expand any failed sections above to see the stack trace."
+            )
+            st.balloons()
+
+            with stylable_container(key="page_link_style", css_styles=pagelink_style):
+                st.page_link(
+                    "pages/1_Summary_View.py",
+                    label="View Summary of Annotations",
+                    icon="🔍",
+                )
 
 
 def parse_pdf(pdf, _recipe) -> Document:
@@ -165,7 +206,7 @@ with col1:
             for model_name in st.session_state[CUSTOM_MODELS_KEY]:
                 st.write(model_name)
 
-            st.button("Clear all", on_click=reset_custom_models())
+            st.button("Clear all", on_click=reset_custom_models)
 
     with st.container(border=True):
         st.write("### Add a HuggingFace Token Classification Model")
@@ -190,7 +231,7 @@ with col1:
                 type="primary",
                 key=f"use_{model_name}",
                 on_click=lambda custom_model_name: st.session_state[CUSTOM_MODELS_KEY].add(
-                    custom_model_name.replace("/", "_")
+                    custom_model_name
                 ),
                 kwargs={"custom_model_name": model_name},
             )
@@ -202,39 +243,8 @@ with col2:
         uploaded_file = st.file_uploader(
             "Upload a paper to process.", type="pdf", accept_multiple_files=False
         )
-        st.form_submit_button("Process uploaded paper")
-
-    if uploaded_file is not None:
-        bytes_data = uploaded_file.read()
-        paper_filename = os.path.join(UPLOADED_PDF_PATH, uploaded_file.name)
-        with open(paper_filename, "wb") as f:
-            f.write(bytes_data)
-        recipe = get_recipe()
-
-        parsed_paper = parse_pdf(paper_filename, recipe)
-
-        for model_name in set(st.session_state[CUSTOM_MODELS_KEY]):
-            with st.status(f"Running model {model_name}") as model_status:
-                try:
-                    predictor = get_hf_tagger(model_name)
-                    model_entities = predictor.predict(parsed_paper)
-                    parsed_paper.annotate_layer(f"ENTITIES_{model_name}", model_entities)
-                except Exception as e:
-                    st.write(e)
-                    model_status.update("error")
-
-        with open(
-            os.path.join(PARSED_PAPER_FOLDER, uploaded_file.name.replace("pdf", "json")), "w"
-        ) as f:
-            json.dump(parsed_paper.to_json(), f, indent=4)
-
-        st.session_state["focus_document"] = uploaded_file.name.replace("pdf", "json")
-        st.write("Done processing paper! Expand any failed sections above to see the stack trace.")
-        st.balloons()
-
-        with stylable_container(key="page_link_style", css_styles=pagelink_style):
-            st.page_link(
-                "pages/1_Summary_View.py",
-                label="View Summary of Annotations",
-                icon="🔍",
-            )
+        st.form_submit_button(
+            "Process uploaded paper",
+            on_click=process_paper,
+            kwargs={"uploaded_paper": uploaded_file, "container": col2},
+        )
