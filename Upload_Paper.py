@@ -44,7 +44,7 @@ a:hover {
 }
 """
 if "custom_models" not in st.session_state:
-    st.session_state["custom_models"] = {}
+    st.session_state["custom_models"] = set()
 
 
 @st.cache_resource
@@ -155,13 +155,13 @@ with col1:
         st.checkbox("Predict VILA", value=True, disabled=True)
 
     if st.session_state.get("custom_models"):
-        with st.status("Additional Models:"):
-            for model_name, details in st.session_state["custom_models"].items():
+        with st.status("Additional Models:", expanded=True):
+            for model_name in st.session_state["custom_models"]:
                 st.write(model_name)
 
     with st.container(border=True):
         st.write("### Add a HuggingFace Token Classification Model")
-        model_name_input = st_keyup(label="Model Name Filter")
+        model_name_input = st_keyup(label="Model Name Filter", debounce=500)
         hf_api = HfApi()
 
         results = hf_api.list_models(
@@ -177,10 +177,16 @@ with col1:
             model_name = result.id
             model_name_col, use_model_col = st.columns([0.7, 0.3])
             model_name_col.write(f"{model_name}\n(⬇️ {result.downloads})")
-            if use_model_col.button("Use this model", type="primary", key=f"use_{model_name}"):
-                st.session_state["custom_models"][model_name.replace("/", "-")] = get_hf_tagger(
-                    model_name
-                )
+            use_model_col.button(
+                "Use this model",
+                type="primary",
+                key=f"use_{model_name}",
+                on_click=lambda custom_model_name: st.session_state["custom_models"].add(
+                    custom_model_name.replace("/", "_")
+                ),
+                kwargs={"custom_model_name": model_name},
+            )
+
 
 with col2:
     with st.form("file_upload_form"):
@@ -199,9 +205,10 @@ with col2:
 
         parsed_paper = parse_pdf(paper_filename, recipe)
 
-        for model_name, predictor in st.session_state["custom_models"].items():
+        for model_name in set(st.session_state["custom_models"]):
             with st.status(f"Running model {model_name}") as model_status:
                 try:
+                    predictor = get_hf_tagger(model_name)
                     model_entities = predictor.predict(parsed_paper)
                     parsed_paper.annotate_layer(f"ENTITIES_{model_name}", model_entities)
                 except Exception as e:
