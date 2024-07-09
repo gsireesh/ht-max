@@ -80,6 +80,12 @@ VILA_LABELS_MAP = {
     "Footnote": FootnotesFieldName,
 }
 
+headers = {
+  "app_id": "",
+  "app_key": ""
+}
+
+url = 'https://api.mathpix.com/v3/text'
 
 class MaterialsRecipe(Recipe):
     def __init__(
@@ -94,6 +100,11 @@ class MaterialsRecipe(Recipe):
         matIE_directory: str = "",
         gpu_id: str = "0",
         dpi: int = 300,
+        mathpix_endpoint: str = "https://api.mathpix.com/v3/text"
+        mathpix_token: dict =  {
+                                  "app_id": "",
+                                  "app_key": ""
+                                }
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
@@ -131,7 +142,7 @@ class MaterialsRecipe(Recipe):
         else:
             self.matIE_predictor = None
 
-        self.table_structure_predictor = TableStructurePredictor()
+        self.table_structure_predictor = TableStructurePredictor(app_url = mathpix_endpoint,mathpix_headers=mathpix_token)
 
         self.logger.info("Finished instantiating recipe")
 
