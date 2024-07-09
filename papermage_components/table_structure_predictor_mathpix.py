@@ -45,20 +45,15 @@ def get_nearby_captions(table, doc, expansion_factor):
 
 
 class TableStructurePredictor(BasePredictor):
-    def get_table_test(self, doc: Document) -> List[Entity]:
-        img = []
-        for table in getattr(doc, TablesFieldName):
-            if abs(table.spans[0].start - table.spans[0].end)<100:
-                continue
-            table_image = get_table_image(table, doc)
-            img.append(table_image)
-        return img
-    def get_table(self, doc: Document) -> List[Entity]:
+    def __init__(self,expandsion_value = 0.01):
+        self.expand_ratio = expandsion_value
+      
+    def _predict(self, doc: Document) -> List[Entity]:
 
         for table in getattr(doc, TablesFieldName):
             if abs(table.spans[0].start - table.spans[0].end)<100:
                 continue
-            table_image = get_table_image(table, doc)
+            table_image = get_table_image(table, doc,None,self.expand_ratio)
             math_pix_input = get_mathpix_input(encode_image(table_image))
             response = requests.post(url, headers=headers, json=math_pix_input)
             response_data = response.json()
