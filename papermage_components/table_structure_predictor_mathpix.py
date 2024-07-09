@@ -15,13 +15,6 @@ import csv
 from collections import defaultdict
 from PIL import Image
 
-headers = {
-  "app_id": "",
-  "app_key": ""
-}
-
-url = 'https://api.mathpix.com/v3/text'
-
 def get_mathpix_input(encoded_image):
     json_data = {
         "src": f"data:image/jpeg;base64,{encoded_image}",
@@ -45,8 +38,10 @@ def get_nearby_captions(table, doc, expansion_factor):
 
 
 class TableStructurePredictor(BasePredictor):
-    def __init__(self,expandsion_value = 0.01):
+    def __init__(self,app_url,mathpix_headers,expandsion_value = 0.01):
         self.expand_ratio = expandsion_value
+        self.url = app_url
+        self.headers = mathpix_headers
       
     def _predict(self, doc: Document) -> List[Entity]:
 
@@ -55,7 +50,7 @@ class TableStructurePredictor(BasePredictor):
                 continue
             table_image = get_table_image(table, doc,None,self.expand_ratio)
             math_pix_input = get_mathpix_input(encode_image(table_image))
-            response = requests.post(url, headers=headers, json=math_pix_input)
+            response = requests.post(self.url, headers=self.headers, json=math_pix_input)
             response_data = response.json()
             if "error_info" in response_data.keys():
                 print("get an error")
