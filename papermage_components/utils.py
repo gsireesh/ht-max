@@ -151,8 +151,8 @@ def get_table_image(table_entity: Entity, doc: Document, page_image=None):
     page_w, page_h = page_image.size
     table_image = page_image.crop(
         (
-            box.l * page_w,
-            box.t * page_h,
+            (box.l-0.01) * page_w,
+            (box.t-0.01) * page_h,
             (box.l + box.w) * page_w,
             (box.t + box.h) * page_h,
         )

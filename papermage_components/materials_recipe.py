@@ -59,7 +59,7 @@ from papermage_components.scispacy_sentence_predictor import SciSpacySentencePre
 from papermage_components.matIE_predictor import MatIEPredictor
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
-from papermage_components.table_structure_predictor import TableStructurePredictor
+from papermage_components.table_structure_predictor_mathpix import TableStructurePredictor
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -93,7 +93,7 @@ class MaterialsRecipe(Recipe):
         xml_out_dir: str = "data/grobid_xml",
         matIE_directory: str = "",
         gpu_id: str = "0",
-        dpi: int = 72,
+        dpi: int = 300,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
@@ -131,7 +131,7 @@ class MaterialsRecipe(Recipe):
         else:
             self.matIE_predictor = None
 
-        self.table_structure_predictor = TableStructurePredictor.from_model_name()
+        self.table_structure_predictor = TableStructurePredictor()
 
         self.logger.info("Finished instantiating recipe")
 
@@ -193,8 +193,7 @@ class MaterialsRecipe(Recipe):
         doc.annotate(*preds)
 
         self.logger.info("Predicting table structure")
-        self.table_structure_predictor.predict(doc)
-
+        self.table_structure_predictor.get_table(doc)
         return doc
 
 
