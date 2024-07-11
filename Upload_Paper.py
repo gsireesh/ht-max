@@ -58,7 +58,7 @@ if CUSTOM_MODELS_KEY not in st.session_state:
 def get_recipe():
     recipe = MaterialsRecipe(
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
-        grobid_server_url="http://localhost:8070",
+        grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
         gpu_id="mps",
     )
     return recipe
