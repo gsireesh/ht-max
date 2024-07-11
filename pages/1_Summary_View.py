@@ -16,7 +16,9 @@ st.set_page_config(layout="wide")
 @st.cache_data
 def get_hf_entity_types(model_name):
     model_config = AutoConfig.from_pretrained(model_name)
-    model_types = set([re.sub("[BIO]-", "", label) for label in model_config.label2id])
+    model_types = set(
+        [re.sub("[BIO]-", "", label) for label in model_config.label2id if label != "O"]
+    )
     return model_types
 
 
@@ -124,7 +126,9 @@ def get_tables(doc, filter_string):
 
 
 file_options = os.listdir(PARSED_PAPER_FOLDER)
+DEFAULT_ENABLED_MODELS = {"MatIE", "GPT-3.5"}
 show_model_annotations = {}
+model_entity_type_filter = {}
 
 with st.sidebar:  # .form("File selector"):
     st.write("Select a parsed file whose results to display")
@@ -138,10 +142,19 @@ with st.sidebar:  # .form("File selector"):
     focus_document = load_document(file_selector)
 
     st.write("Show predicted results from:")
-    for model_name in ["MatIE", "GPT-3.5"]:
-        show_model_annotations[model_name] = st.toggle(model_name, value=True)
-    for model_name in st.session_state[CUSTOM_MODELS_KEY]:
-        show_model_annotations[model_name] = st.toggle(model_name, value=False)
+
+    for model_name in ["MatIE", "GPT-3.5", *st.session_state[CUSTOM_MODELS_KEY]]:
+        show_model_annotations[model_name] = st.toggle(
+            model_name, value=model_name in DEFAULT_ENABLED_MODELS
+        )
+        if show_model_annotations[model_name]:
+            model_entity_types = get_entity_types([model_name])
+            model_entity_type_filter[model_name] = st.multiselect(
+                "Entity types to display:",
+                options=model_entity_types,
+                default=model_entity_types,
+                key=f"entity_type_select_{model_name}",
+            )
 
 
 entities_column, table_column = st.columns([0.5, 0.5])
@@ -152,11 +165,6 @@ with entities_column:
         [model_name for model in show_model_annotations if show_model_annotations[model]]
     )
 
-    entity_type_choice = st.multiselect(
-        label="Choose which entity types to display",
-        options=all_entity_types,
-        default=all_entity_types,
-    )
     section_choice = st.multiselect(
         label="Choose sections from which to display entities",
         options=all_sections,
@@ -166,11 +174,15 @@ with entities_column:
     entities = []
     if show_model_annotations["MatIE"]:
         entities = entities + get_matie_entities(
-            focus_document, allowed_sections=section_choice, allowed_types=entity_type_choice
+            focus_document,
+            allowed_sections=section_choice,
+            allowed_types=model_entity_type_filter["MatIE"],
         )
     if show_model_annotations["GPT-3.5"]:
         entities = entities + get_gpt_entities(
-            focus_document, allowed_sections=section_choice, allowed_types=entity_type_choice
+            focus_document,
+            allowed_sections=section_choice,
+            allowed_types=model_entity_type_filter["GPT-3.5"],
         )
     for predictor_name, show in show_model_annotations.items():
         if show:
@@ -178,7 +190,7 @@ with entities_column:
                 focus_document,
                 predictor_name,
                 allowed_sections=section_choice,
-                allowed_types=entity_type_choice,
+                allowed_types=model_entity_type_filter[predictor_name],
             )
 
     st.write(f"Found {len(entities)} entities:")
