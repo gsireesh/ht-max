@@ -59,6 +59,7 @@ from papermage_components.scispacy_sentence_predictor import SciSpacySentencePre
 from papermage_components.matIE_predictor import MatIEPredictor
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
+from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
 from papermage_components.table_structure_predictor import TableStructurePredictor
 
 VILA_LABELS_MAP = {
@@ -132,6 +133,10 @@ class MaterialsRecipe(Recipe):
             self.matIE_predictor = None
 
         self.table_structure_predictor = TableStructurePredictor.from_model_name()
+
+        self.hf_predictor = HfTokenClassificationPredictor(
+            model_name="tner/roberta-large-ontonotes5", device=gpu_id
+        )
 
         self.logger.info("Finished instantiating recipe")
 
