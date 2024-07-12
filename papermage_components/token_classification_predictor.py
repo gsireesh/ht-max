@@ -15,9 +15,7 @@ class EntityCharSpan:
     metadata: dict = None
 
 
-def map_entities_to_sentence_spans(
-    sentence: Entity, entities: list[EntityCharSpan]
-) -> list[Entity]:
+def map_char_spans_to_entity(sentence: Entity, entities: list[EntityCharSpan]) -> list[Entity]:
     all_entities = []
 
     # compute a map of offsets from the beginning of the sentence to every position in it
@@ -68,10 +66,10 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
     def tag_entities_in_batch(self, batch: list[str]) -> list[list[EntityCharSpan]]:
         raise NotImplementedError()
 
-    def generate_batches(self, doc: Document) -> list[list[str]]:
+    def generate_batches(self, doc: Document) -> list[list[tuple[Entity, str]]]:
         all_batches = []
         already_processed_sentences = set()
-        for para_idx, paragraph in tqdm(enumerate(doc.reading_order_sections)):
+        for para_idx, paragraph in enumerate(doc.reading_order_sections):
 
             paragraph_sentences = [
                 sentence
@@ -82,16 +80,19 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
                 continue
             already_processed_sentences.update(paragraph_sentences)
 
-            sentence_texts = [sentence.text.replace("\n", " ") for sentence in paragraph_sentences]
-            all_batches.append(sentence_texts)
+            batch = [
+                (sentence, sentence.text.replace("\n", " ")) for sentence in (paragraph_sentences)
+            ]
+            all_batches.append(batch)
         return all_batches
 
     def _predict(self, doc: Document) -> list[Entity]:
         all_entities = []
 
-        for batch_texts in self.generate_batches(doc):
-            entities_by_sentence = self.tag_entities_in_batch(batch_texts)
-            for instance, instance_entities in zip(batch_texts, entities_by_sentence):
-                all_entities.extend(map_entities_to_sentence_spans(instance, instance_entities))
+        for batch in tqdm(self.generate_batches(doc)):
+            batch_entities, batch_texts = zip(*batch)
+            tagged_by_instance = self.tag_entities_in_batch(batch_texts)
+            for (instance_entity, instance_text), instance_tagged in zip(batch, tagged_by_instance):
+                all_entities.extend(map_char_spans_to_entity(instance_entity, instance_tagged))
 
         return all_entities
