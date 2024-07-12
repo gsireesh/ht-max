@@ -85,7 +85,7 @@ def process_paper(uploaded_paper, container):
                     try:
                         predictor = get_hf_tagger(model_name)
                         model_entities = predictor.predict(parsed_paper)
-                        parsed_paper.annotate_layer(f"ENTITIES_{model_name}", model_entities)
+                        parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
                     except Exception as e:
                         st.write(e)
                         model_status.update("error")

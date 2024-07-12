@@ -13,6 +13,11 @@ from papermage_components.constants import (
 st.set_page_config(layout="wide")
 
 
+file_options = os.listdir(PARSED_PAPER_FOLDER)
+show_model_annotations = {}
+model_entity_type_filter = {}
+
+
 @st.cache_data
 def get_hf_entity_types(model_name):
     model_config = AutoConfig.from_pretrained(model_name)
@@ -20,6 +25,14 @@ def get_hf_entity_types(model_name):
         [re.sub("[BIO]-", "", label) for label in model_config.label2id if label != "O"]
     )
     return model_types
+
+
+def infer_tagging_models(doc: Document) -> list[str]:
+    return [
+        layer.replace("TAGGED_ENTITIES_", "")
+        for layer in doc.layers
+        if layer.startswith("TAGGED_ENTITIES_")
+    ]
 
 
 def get_entity_types(model_names):
@@ -35,12 +48,12 @@ def get_entity_types(model_names):
     return all_entity_types
 
 
-def get_hf_entities(doc, model_name, allowed_sections, allowed_types):
+def get_tagged_entities(doc, model_name, allowed_sections, allowed_types):
     all_entities = []
     for section in doc.reading_order_sections:
         if section.metadata["section_name"] not in allowed_sections:
             continue
-        for entity in getattr(section, f"ENTITIES_{model_name}", []):
+        for entity in getattr(section, f"TAGGED_ENTITIES_{model_name}", []):
             if entity.metadata["entity_type"] not in allowed_types:
                 continue
             sentence_context = entity.sentences[0].text
@@ -54,55 +67,6 @@ def get_hf_entities(doc, model_name, allowed_sections, allowed_types):
                 }
             )
 
-    return all_entities
-
-
-def get_matie_entities(doc, allowed_sections, allowed_types):
-    all_entities = []
-    for entity in doc.getattr(f"TAGGED_ENTITIES_MatIE", []):
-        if not entity.reading_order_sections:
-            continue
-
-        section_name = entity.reading_order_sections[0].metadata["section_name"]
-        entity_type = entity.metadata["entity_type"]
-
-        if section_name not in allowed_sections or entity_type not in allowed_type:
-            continue
-
-        sentence_context = entity.sentences[0].text
-        all_entities.append(
-            {
-                "entity_type": entity_type,
-                "entity_text": entity.text,
-                "entity_section": section_name,
-                "sentence_context": sentence_context,
-                "source_model": "MatIE",
-            }
-        )
-    return all_entities
-
-
-def get_gpt_entities(doc, allowed_sections, allowed_types):
-    all_entities = []
-    for section in doc.reading_order_sections:
-        section_name = section.metadata["section_name"]
-        if section_name not in allowed_sections:
-            continue
-        if (gpt_entities := section.metadata.get("gpt_recognized_entities")) is None:
-            continue
-        for entity in gpt_entities:
-            entity_type = entity.get("entity_type").replace(" ", "_")
-            if entity_type not in allowed_types:
-                continue
-            all_entities.append(
-                {
-                    "entity_type": entity_type,
-                    "entity_text": entity.get("entity_string"),
-                    "sentence_context": entity.get("entity_context"),
-                    "entity_section": section_name,
-                    "source_model": "GPT-3.5",
-                }
-            )
     return all_entities
 
 
@@ -125,12 +89,7 @@ def get_tables(doc, filter_string):
     return tables_to_return
 
 
-file_options = os.listdir(PARSED_PAPER_FOLDER)
-DEFAULT_ENABLED_MODELS = {"MatIE", "GPT-3.5"}
-show_model_annotations = {}
-model_entity_type_filter = {}
-
-with st.sidebar:  # .form("File selector"):
+with st.sidebar:
     st.write("Select a parsed file whose results to display")
     focus_file = st.session_state.get("focus_document")
     file_selector = st.selectbox(
@@ -143,10 +102,8 @@ with st.sidebar:  # .form("File selector"):
 
     st.write("Show predicted results from:")
 
-    for model_name in ["MatIE", "GPT-3.5", *st.session_state[CUSTOM_MODELS_KEY]]:
-        show_model_annotations[model_name] = st.toggle(
-            model_name, value=model_name in DEFAULT_ENABLED_MODELS
-        )
+    for model_name in infer_tagging_models(focus_document):
+        show_model_annotations[model_name] = st.toggle(model_name, value=True)
         if show_model_annotations[model_name]:
             model_entity_types = get_entity_types([model_name])
             model_entity_type_filter[model_name] = st.multiselect(
@@ -172,21 +129,9 @@ with entities_column:
     )
 
     entities = []
-    if show_model_annotations["MatIE"]:
-        entities = entities + get_matie_entities(
-            focus_document,
-            allowed_sections=section_choice,
-            allowed_types=model_entity_type_filter["MatIE"],
-        )
-    if show_model_annotations["GPT-3.5"]:
-        entities = entities + get_gpt_entities(
-            focus_document,
-            allowed_sections=section_choice,
-            allowed_types=model_entity_type_filter["GPT-3.5"],
-        )
     for predictor_name, show in show_model_annotations.items():
         if show:
-            entities = entities + get_hf_entities(
+            entities = entities + get_tagged_entities(
                 focus_document,
                 predictor_name,
                 allowed_sections=section_choice,
