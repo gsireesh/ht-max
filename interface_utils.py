@@ -14,7 +14,6 @@ from papermage_components.constants import MAT_IE_TYPES
 
 PARSED_PAPER_FOLDER = "data/Midyear_Review_Papers_Parsed"
 CUSTOM_MODELS_KEY = "custom_models"
-SELECTABLE_FIELDS = {"reading_order_sections", TablesFieldName}
 
 
 @st.cache_resource
@@ -60,13 +59,13 @@ def get_entity_types(model_names):
     return all_entity_types
 
 
-def plot_selectable_regions(document, page_number, exclude_entities=None):
+def plot_selectable_regions(document, page_number, selectable_layers, exclude_entities=None):
     exclude_entities = exclude_entities if exclude_entities is not None else []
     page = document.pages[page_number]
     page_image = page.images[0]
 
     all_entities = []
-    for field in SELECTABLE_FIELDS:
+    for field in selectable_layers:
         entities = getattr(page, field)
         all_entities.extend([entity for entity in entities if entity not in exclude_entities])
 
@@ -91,7 +90,12 @@ def highlight_section_on_page(document, page_number, section_name, paragraph):
         and e.metadata["paragraph_reading_order"] == paragraph
     ]
 
-    page_image = plot_selectable_regions(document, page_number, exclude_entities=section_entities)
+    page_image = plot_selectable_regions(
+        document,
+        page_number,
+        selectable_layers=["reading_order_sections", TablesFieldName],
+        exclude_entities=section_entities,
+    )
 
     highlighted = plot_entities_on_page(
         page_image,
@@ -104,14 +108,19 @@ def highlight_section_on_page(document, page_number, section_name, paragraph):
     return highlighted
 
 
-def highlight_table_on_page(document, page_number, table_entities):
+def highlight_entities_on_page(document, page_number, entities, selectable_layers):
     page = document.pages[page_number]
 
-    page_image = plot_selectable_regions(document, page_number, exclude_entities=table_entities)
+    page_image = plot_selectable_regions(
+        document,
+        page_number,
+        selectable_layers=selectable_layers,
+        exclude_entities=entities,
+    )
 
     highlighted = plot_entities_on_page(
         page_image,
-        table_entities,
+        entities,
         box_width=2,
         box_alpha=0.2,
         box_color="green",

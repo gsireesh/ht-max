@@ -163,11 +163,18 @@ with doc_vis_column:
             focus_document, focus_page, section_name, paragraph
         )
     elif isinstance(section_name, int):
-        highlighted_image = highlight_table_on_page(
-            focus_document, focus_page, [focus_document.tables[section_name]]
+        highlighted_image = highlight_entities_on_page(
+            focus_document,
+            focus_page,
+            [focus_document.tables[section_name]],
+            selectable_layers=["reading_order_sections", TablesFieldName],
         )
     else:
-        highlighted_image = plot_selectable_regions(focus_document, focus_page)
+        highlighted_image = plot_selectable_regions(
+            focus_document,
+            focus_page,
+            selectable_layers=["reading_order_sections", TablesFieldName],
+        )
     page_width, page_height = highlighted_image.pilimage.size
     ratio = page_height / page_width
 
