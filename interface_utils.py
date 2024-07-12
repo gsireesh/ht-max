@@ -4,7 +4,7 @@ import re
 
 from transformers import AutoConfig
 
-from papermage import Document
+from papermage import Document, TablesFieldName
 from papermage.visualizers import plot_entities_on_page
 import streamlit as st
 import spacy
@@ -13,8 +13,8 @@ from papermage_components.constants import MAT_IE_TYPES
 
 
 PARSED_PAPER_FOLDER = "data/Midyear_Review_Papers_Parsed"
-
 CUSTOM_MODELS_KEY = "custom_models"
+SELECTABLE_FIELDS = {"reading_order_sections", TablesFieldName}
 
 
 @st.cache_resource
@@ -60,18 +60,58 @@ def get_entity_types(model_names):
     return all_entity_types
 
 
-def highlight_section_on_page(document, page_number, section_name, paragraph):
+def plot_selectable_regions(document, page_number, exclude_entities=None):
+    exclude_entities = exclude_entities if exclude_entities is not None else []
     page = document.pages[page_number]
     page_image = page.images[0]
+
+    all_entities = []
+    for field in SELECTABLE_FIELDS:
+        entities = getattr(page, field)
+        all_entities.extend([entity for entity in entities if entity not in exclude_entities])
+
+    image_with_selectables = plot_entities_on_page(
+        page_image,
+        all_entities,
+        box_width=2,
+        box_alpha=0.2,
+        box_color="lightblue",
+        page_number=page_number,
+    )
+
+    return image_with_selectables
+
+
+def highlight_section_on_page(document, page_number, section_name, paragraph):
+    page = document.pages[page_number]
     section_entities = [
         e
         for e in page.reading_order_sections
         if e.metadata["section_name"] == section_name
         and e.metadata["paragraph_reading_order"] == paragraph
     ]
+
+    page_image = plot_selectable_regions(document, page_number, exclude_entities=section_entities)
+
     highlighted = plot_entities_on_page(
         page_image,
         section_entities,
+        box_width=2,
+        box_alpha=0.2,
+        box_color="green",
+        page_number=page_number,
+    )
+    return highlighted
+
+
+def highlight_table_on_page(document, page_number, table_entities):
+    page = document.pages[page_number]
+
+    page_image = plot_selectable_regions(document, page_number, exclude_entities=table_entities)
+
+    highlighted = plot_entities_on_page(
+        page_image,
+        table_entities,
         box_width=2,
         box_alpha=0.2,
         box_color="green",

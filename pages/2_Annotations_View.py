@@ -154,21 +154,20 @@ with sections_column:
 
 
 with doc_vis_column:
-    st.write("Click a section of text to view the annotations on it:")
+    st.write(
+        "Click a section of text to view the annotations on it. Light blue boxes indicate clickable"
+        " areas that have been annotated. Green boxes indicate the current section of focus."
+    )
     if isinstance(section_name, str):
         highlighted_image = highlight_section_on_page(
             focus_document, focus_page, section_name, paragraph
         )
     elif isinstance(section_name, int):
-        highlighted_image = plot_entities_on_page(
-            focus_document.pages[focus_page].images[0],
-            entities=[focus_document.tables[section_name]],
-            box_width=2,
-            box_alpha=0.2,
-            box_color="green",
+        highlighted_image = highlight_table_on_page(
+            focus_document, focus_page, [focus_document.tables[section_name]]
         )
     else:
-        highlighted_image = focus_document.pages[focus_page].images[0]
+        highlighted_image = plot_selectable_regions(focus_document, focus_page)
     page_width, page_height = highlighted_image.pilimage.size
     ratio = page_height / page_width
 
