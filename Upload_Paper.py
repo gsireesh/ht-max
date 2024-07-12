@@ -19,7 +19,7 @@ from streamlit_extras.stylable_container import stylable_container
 
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
-from shared_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
+from interface_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
 
 
 st.set_page_config(layout="wide")

@@ -1,13 +1,8 @@
-import re
-
 import pandas as pd
 from streamlit.column_config import TextColumn
-from transformers import AutoConfig
 
-from shared_utils import *
-from papermage_components.constants import (
-    MAT_IE_TYPES,
-)
+from interface_utils import *
+from interface_utils import get_entity_types, infer_tagging_models
 
 
 st.set_page_config(layout="wide")
@@ -16,36 +11,6 @@ st.set_page_config(layout="wide")
 file_options = os.listdir(PARSED_PAPER_FOLDER)
 show_model_annotations = {}
 model_entity_type_filter = {}
-
-
-@st.cache_data
-def get_hf_entity_types(model_name):
-    model_config = AutoConfig.from_pretrained(model_name)
-    model_types = set(
-        [re.sub("[BIO]-", "", label) for label in model_config.label2id if label != "O"]
-    )
-    return model_types
-
-
-def infer_tagging_models(doc: Document) -> list[str]:
-    return [
-        layer.replace("TAGGED_ENTITIES_", "")
-        for layer in doc.layers
-        if layer.startswith("TAGGED_ENTITIES_")
-    ]
-
-
-def get_entity_types(model_names):
-    all_entity_types = set()
-    for model_name in model_names:
-        if model_name == "MatIE":
-            all_entity_types.update([e_type for e_type in MAT_IE_TYPES])
-        elif model_name == "GPT-3.5":
-            all_entity_types.update([e_type for e_type in MAT_IE_TYPES])
-        else:
-            all_entity_types.update(get_hf_entity_types(model_name))
-
-    return all_entity_types
 
 
 def get_tagged_entities(doc, model_name, allowed_sections, allowed_types):
