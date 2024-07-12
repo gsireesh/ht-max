@@ -99,7 +99,7 @@ class MaterialsRecipe(Recipe):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
 
-        self.logger.info("Instantiating recipe...")
+        self.logger.info("Instantiating _recipe...")
         self.pdfplumber_parser = PDFPlumberParser()
         self.grobid_order_parser = GrobidReadingOrderParser(
             grobid_server_url, check_server=True, xml_out_dir=xml_out_dir
@@ -138,7 +138,7 @@ class MaterialsRecipe(Recipe):
             model_name="tner/roberta-large-ontonotes5", device=gpu_id
         )
 
-        self.logger.info("Finished instantiating recipe")
+        self.logger.info("Finished instantiating _recipe")
 
     def from_pdf(self, pdf: Path) -> Document:
         self.logger.info("Parsing document...")

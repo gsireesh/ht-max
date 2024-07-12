@@ -164,7 +164,7 @@ class GrobidReadingOrderParser(Parser):
             "grobid_server": grobid_server_url,
             "batch_size": 1000,
             "sleep_time": 5,
-            "timeout": 60,
+            "timeout": 6000,
             "coordinates": sorted({"head", "p", "s", "ref", "body", "item", "persName"}),
             **grobid_config,
         }

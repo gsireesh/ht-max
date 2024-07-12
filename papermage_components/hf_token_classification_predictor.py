@@ -62,8 +62,8 @@ class HfTokenClassificationPredictor(TokenClassificationPredictorABC):
         )
         offset_mapping = tokenized.offset_mapping.tolist()
         model_output = self.model(
-            input_ids=tokenized.input_ids.to("mps"),
-            attention_mask=tokenized.attention_mask.to("mps"),
+            input_ids=tokenized.input_ids.to(self.device),
+            attention_mask=tokenized.attention_mask.to(self.device),
         )
         label_idxs = torch.argmax(model_output.logits, dim=-1).tolist()
         label_lists = [

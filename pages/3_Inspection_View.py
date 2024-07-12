@@ -17,7 +17,7 @@ from papermage_components.utils import (
     visualize_matIE_annotations,
     get_table_image,
 )
-from shared_utils import *
+from interface_utils import *
 
 st.set_page_config(layout="wide")
 
