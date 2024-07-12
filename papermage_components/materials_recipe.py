@@ -169,7 +169,9 @@ class MaterialsRecipe(Recipe):
         if self.matIE_predictor is not None:
             self.logger.info("Predicting MatIE Entities...")
             matIE_entities = self.matIE_predictor.predict(doc=doc)
-            doc.annotate(matIE_entities)
+            doc.annotate_layer(
+                name=self.matIE_predictor.preferred_layer_name, entities=matIE_entities
+            )
 
         self.logger.info("Predicting blocks...")
         with warnings.catch_warnings():

@@ -59,26 +59,26 @@ def get_hf_entities(doc, model_name, allowed_sections, allowed_types):
 
 def get_matie_entities(doc, allowed_sections, allowed_types):
     all_entities = []
-    for matie_type in MAT_IE_TYPES:
-        if matie_type not in allowed_types:
+    for entity in doc.getattr(f"TAGGED_ENTITIES_MatIE", []):
+        if not entity.reading_order_sections:
             continue
-        entities = getattr(doc, matie_type)
-        for entity in entities:
-            if not entity.reading_order_sections:
-                continue
-            section_name = entity.reading_order_sections[0].metadata["section_name"]
-            if section_name not in allowed_sections:
-                continue
-            sentence_context = entity.sentences[0].text
-            all_entities.append(
-                {
-                    "entity_type": matie_type,
-                    "entity_text": entity.text,
-                    "entity_section": section_name,
-                    "sentence_context": sentence_context,
-                    "source_model": "MatIE",
-                }
-            )
+
+        section_name = entity.reading_order_sections[0].metadata["section_name"]
+        entity_type = entity.metadata["entity_type"]
+
+        if section_name not in allowed_sections or entity_type not in allowed_type:
+            continue
+
+        sentence_context = entity.sentences[0].text
+        all_entities.append(
+            {
+                "entity_type": entity_type,
+                "entity_text": entity.text,
+                "entity_section": section_name,
+                "sentence_context": sentence_context,
+                "source_model": "MatIE",
+            }
+        )
     return all_entities
 
 

@@ -152,6 +152,17 @@ def parse_pdf(pdf, _recipe) -> Document:
             status.update(state="error")
             st.write(e)
 
+    if recipe.matIE_predictor is not None:
+        with st.status("Predicting MatIE Entities...") as status:
+            try:
+                matIE_entities = recipe.matIE_predictor.predict(doc=doc)
+                doc.annotate_layer(
+                    name=recipe.matIE_predictor.preferred_layer_name, entities=matIE_entities
+                )
+            except Exception as e:
+                status.update(state="error")
+                st.write(e)
+
     with st.status("Predicting blocks...") as status:
         try:
             with warnings.catch_warnings():
