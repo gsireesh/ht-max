@@ -129,22 +129,13 @@ class MatIEPredictor(BasePredictor):
         if not os.path.exists(self.working_folder):
             os.makedirs(self.working_folder, exist_ok=True)
         self.gpu_id = gpu_id
-
-        # Initialize the NER class instance with the output directory
-        print(
-            "NER_model_dir ",
-            self.NER_model_dir,
-            "vocab_dir",
-            self.vocab_dir,
-            "output_folder ",
-            self.working_folder,
-        )
+        self.preferred_layer_name = "TAGGED_ENTITIES_MatIE"
 
     @property
     def REQUIRED_DOCUMENT_FIELDS(self) -> List[str]:
         return [SentencesFieldName, TokensFieldName]
 
-    def _predict(self, doc: Document) -> Tuple[Prediction, ...]:
+    def _predict(self, doc: Document) -> List[Entity]:
 
         print("Creating temporary input files")
 
@@ -196,12 +187,7 @@ class MatIEPredictor(BasePredictor):
             fixed_entities.extend(fix_entity_offsets(entities[key], offset_map, para_offset))
             paragraph.metadata["in_section_relations"] = relations[key]
         papermage_entities = [entity.to_papermage_entity() for entity in fixed_entities]
-        predictions = group_by(
-            papermage_entities,
-            metadata_field="entity_type",
-        )
-
-        return predictions
+        return papermage_entities
 
     def generate_txt(self, folder_name, paragraph_text, section_name, reading_order):
         file_path = os.path.join(
