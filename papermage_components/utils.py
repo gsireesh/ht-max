@@ -134,8 +134,13 @@ def visualize_highlights(paragraph_entity, spacy_pipeline):
     return para_doc
 
 
-def visualize_matIE_annotations(paragraph_entity, spacy_pipeline):
-    entities_by_type = {e_type: getattr(paragraph_entity, e_type, []) for e_type in MAT_IE_TYPES}
+def visualize_tagged_entities(paragraph_entity, spacy_pipeline, model_name, allowed_entity_types):
+    tagged_entities = getattr(paragraph_entity, f"TAGGED_ENTITIES_{model_name}")
+    entities_by_type = {
+        e_type: [e for e in tagged_entities if e.metadata["entity_type"] == e_type]
+        for e_type in allowed_entity_types
+    }
+
     para_doc = spacy_pipeline(paragraph_entity.text.replace("\n", " "))
     para_offset = paragraph_entity.spans[0].start
     annotate_entities_on_doc(entities_by_type, para_doc, para_offset)

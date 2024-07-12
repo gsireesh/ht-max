@@ -3,21 +3,21 @@ import spacy_streamlit
 from streamlit_dimensions import st_dimensions
 from streamlit_image_coordinates import streamlit_image_coordinates
 
-from papermage import Box, Entity
-from papermage.visualizers import plot_entities_on_page
 
+from papermage import Box, Entity
 from papermage_components.constants import (
     HIGHLIGHT_COLORS,
     HIGHLIGHT_TYPES,
     MAT_IE_COLORS,
-    MAT_IE_TYPES,
 )
-from papermage_components.utils import (
-    visualize_highlights,
-    visualize_matIE_annotations,
-    get_table_image,
-)
+
 from interface_utils import *
+from papermage_components.utils import (
+    get_table_image,
+    visualize_highlights,
+    visualize_tagged_entities,
+)
+
 
 st.set_page_config(layout="wide")
 
@@ -25,6 +25,8 @@ st.set_page_config(layout="wide")
 BOX_PADDING = 0.01
 
 file_options = os.listdir(PARSED_PAPER_FOLDER)
+show_model_annotations = {}
+model_entity_type_filter = {}
 
 
 def visualize_table_with_boxes(table, doc, include_tokens):
@@ -45,7 +47,7 @@ def visualize_table_with_boxes(table, doc, include_tokens):
 
 
 with st.sidebar:
-    st.write("Select a pre-parsed file whose results to display")
+    st.write("Select a parsed file whose results to display")
     focus_file = st.session_state.get("focus_document")
     file_selector = st.selectbox(
         "Parsed file",
@@ -54,6 +56,20 @@ with st.sidebar:
     )
     st.session_state["focus_document"] = file_selector
     focus_document = load_document(file_selector)
+
+    st.write("Show tagging results on text from:")
+    show_user_highlights = st.toggle("User Highlights", value=False)
+    for model_name in infer_tagging_models(focus_document):
+        show_model_annotations[model_name] = st.toggle(model_name, value=True)
+        if show_model_annotations[model_name]:
+            model_entity_types = get_entity_types([model_name])
+            model_entity_type_filter[model_name] = st.multiselect(
+                "Entity types to display:",
+                options=model_entity_types,
+                default=model_entity_types,
+                key=f"entity_type_select_{model_name}",
+            )
+
 
 doc_vis_column, sections_column = st.columns([0.4, 0.6])
 with doc_vis_column:
@@ -93,48 +109,38 @@ with sections_column:
         )
 
         for entity in section_entities:
-            entity_highlights = getattr(entity, "annotation_highlights", [])
-            highlight_spacy_doc = visualize_highlights(entity, get_spacy_pipeline())
-            st.write("### Highlighted Entities")
-            spacy_streamlit.visualize_ner(
-                highlight_spacy_doc,
-                labels=HIGHLIGHT_TYPES,
-                show_table=False,
-                displacy_options={"colors": HIGHLIGHT_COLORS},
-                key="annotation_highlights",
-                title=None,
-            )
-            st.markdown("---")
-            st.write("### MatIE Entities")
-            show_matie_entities = st.toggle("Show MatIE Entities", value=True)
-            if show_matie_entities:
-                matIE_spacy_doc = visualize_matIE_annotations(entity, get_spacy_pipeline())
+            if show_user_highlights:
+                entity_highlights = getattr(entity, "annotation_highlights", [])
+                highlight_spacy_doc = visualize_highlights(entity, get_spacy_pipeline())
+                st.write("### Highlighted Entities")
                 spacy_streamlit.visualize_ner(
-                    matIE_spacy_doc,
-                    labels=MAT_IE_TYPES,
+                    highlight_spacy_doc,
+                    labels=HIGHLIGHT_TYPES,
                     show_table=False,
-                    displacy_options={"colors": MAT_IE_COLORS},
-                    key="matIE_highlights",
+                    displacy_options={"colors": HIGHLIGHT_COLORS},
+                    key="annotation_highlights",
                     title=None,
                 )
-            st.markdown("---")
-            st.write("### GPT-3.5 Entities")
-            show_gpt_entities = st.toggle("Show GPT-3.5 Entities", value=True)
-            if show_gpt_entities:
-                gpt_entities = entity.metadata.get("gpt_recognized_entities")
-                if gpt_entities:
-                    formatted_entities = []
-                    for e in gpt_entities:
-                        entity_type = e.get("entity_type").replace(" ", "_")
+                st.markdown("---")
 
-                        formatted_entities.append(
-                            {
-                                "entity_type": entity_type,
-                                "entity_text": e.get("entity_string"),
-                                "sentence_context": e.get("entity_context"),
-                            }
-                        )
-                    st.dataframe(pd.DataFrame(gpt_entities))
+            for model_name, show_model in show_model_annotations.items():
+                if not show_model:
+                    continue
+                st.write(f"### Annotations from {model_name}")
+                spacy_doc = visualize_tagged_entities(
+                    paragraph_entity=entity,
+                    spacy_pipeline=get_spacy_pipeline(),
+                    model_name=model_name,
+                    allowed_entity_types=model_entity_type_filter[model_name],
+                )
+                spacy_streamlit.visualize_ner(
+                    spacy_doc,
+                    labels=get_entity_types([model_name]),
+                    show_table=False,
+                    # displacy_options={"colors": MAT_IE_COLORS},
+                    key=f"highlights_{model_name}",
+                    title=None,
+                )
 
     # table by id
     elif isinstance(section_name, int):
