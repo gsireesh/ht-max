@@ -1,6 +1,5 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import List
 
 from papermage import Entity, Metadata, Span
 from papermage.magelib import Document, Entity, Metadata, SentencesFieldName, Span, TokensFieldName
@@ -69,10 +68,8 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
     def tag_entities_in_batch(self, batch: list[str]) -> list[list[EntityCharSpan]]:
         raise NotImplementedError()
 
-    def _predict(self, doc: Document) -> list[Entity]:
-        all_entities = []
-
-        # some batch intersect with multiple paragraphs, and we don't want to process them twice
+    def generate_batches(self, doc: Document) -> list[list[str]]:
+        all_batches = []
         already_processed_sentences = set()
         for para_idx, paragraph in tqdm(enumerate(doc.reading_order_sections)):
 
@@ -83,12 +80,18 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
             ]
             if not paragraph_sentences:
                 continue
+            already_processed_sentences.update(paragraph_sentences)
 
             sentence_texts = [sentence.text.replace("\n", " ") for sentence in paragraph_sentences]
+            all_batches.append(sentence_texts)
+        return all_batches
 
-            entities_by_sentence = self.tag_entities_in_batch(sentence_texts)
-            for sentence, sentence_entities in zip(paragraph_sentences, entities_by_sentence):
-                all_entities.extend(map_entities_to_sentence_spans(sentence, sentence_entities))
-            already_processed_sentences.update(paragraph_sentences)
+    def _predict(self, doc: Document) -> list[Entity]:
+        all_entities = []
+
+        for batch_texts in self.generate_batches(doc):
+            entities_by_sentence = self.tag_entities_in_batch(batch_texts)
+            for instance, instance_entities in zip(batch_texts, entities_by_sentence):
+                all_entities.extend(map_entities_to_sentence_spans(instance, instance_entities))
 
         return all_entities
