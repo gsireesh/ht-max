@@ -25,7 +25,9 @@ def load_document(doc_filename):
 
 @st.cache_resource
 def get_spacy_pipeline():
-    return spacy.load("en_core_sci_md", exclude=["tagger", "parser", "ner", "lemmatizer"])
+    return spacy.load(
+        "en_core_web_sm", exclude=["tagger", "parser", "ner", "lemmatizer", "attribute_ruler"]
+    )
 
 
 def infer_tagging_models(doc: Document) -> list[str]:
