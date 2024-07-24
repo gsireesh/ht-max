@@ -18,6 +18,12 @@ from streamlit_extras.st_keyup import st_keyup
 from streamlit_extras.stylable_container import stylable_container
 
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
+from papermage_components.llm_completion_predictor import (
+    AVAILABLE_LLMS,
+    DEFAULT_MATERIALS_PROMPT,
+    LLMCompletionPredictor,
+    get_prompt_generator,
+)
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
 from interface_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
 
@@ -48,10 +54,14 @@ a:hover {
 
 def reset_custom_models():
     st.session_state[CUSTOM_MODELS_KEY] = set()
+    st.session_state["CUSTOM_LLMS"] = set()
 
 
 if CUSTOM_MODELS_KEY not in st.session_state:
     st.session_state[CUSTOM_MODELS_KEY] = set()
+
+if "CUSTOM_LLMS" not in st.session_state:
+    st.session_state["CUSTOM_LLMS"] = set()
 
 
 @st.cache_resource
@@ -67,6 +77,20 @@ def get_recipe():
 @st.cache_resource
 def get_hf_tagger(model_name):
     return HfTokenClassificationPredictor(model_name, device="cpu")
+
+
+def validate_and_add_llm(model_name, api_key, prompt_string):
+    llm_predictor = LLMCompletionPredictor(
+        model_name=model_name,
+        api_key=api_key,
+        prompt_generator_function=get_prompt_generator(prompt_string),
+    )
+
+    validation_result = llm_predictor.validate()
+    if validation_result.is_valid:
+        st.session_state["CUSTOM_LLMS"].add(llm_predictor)
+    else:
+        st.error(validation_result.failure_message)
 
 
 def process_paper(uploaded_paper, container):
@@ -190,7 +214,7 @@ def parse_pdf(pdf, _recipe) -> Document:
 
 st.title("Welcome to Collage!")
 
-col1, col2 = st.columns([0.4, 0.6])
+col1, col2 = st.columns([0.6, 0.4])
 with col1:
     st.write("## 1. Customize the pipeline that runs on your paper")
     with st.status("Basic Processing"):
@@ -201,14 +225,21 @@ with col1:
         st.checkbox("Predict blocks", value=True, disabled=True)
         st.checkbox("Predict VILA", value=True, disabled=True)
 
-    if st.session_state.get(CUSTOM_MODELS_KEY):
+    if st.session_state.get(CUSTOM_MODELS_KEY) or st.session_state.get("CUSTOM_LLMS"):
         with st.status("Additional Models:", expanded=True):
+            st.write("**HuggingFace Models:**")
             for model_name in st.session_state[CUSTOM_MODELS_KEY]:
                 st.write(model_name)
 
+            st.write("**Custom LLMs**")
+            for model in st.session_state["CUSTOM_LLMS"]:
+                st.write(model.predictor_identifier)
+
             st.button("Clear all", on_click=reset_custom_models)
 
-    with st.container(border=True):
+    st.divider()
+    hf_tab, llm_tab = st.tabs(["Add HuggingFace Token Classifiers", "Add an LLM Predictor"])
+    with hf_tab, st.container(border=True):
         st.write("### Add a HuggingFace Token Classification Model")
         model_name_input = st_keyup(label="Model Name Filter", debounce=500)
         hf_api = HfApi()
@@ -235,6 +266,23 @@ with col1:
                 ),
                 kwargs={"custom_model_name": model_name},
             )
+
+    with llm_tab, st.form(key="add_llm"):
+        model_name = st.selectbox(label="Select model:", options=AVAILABLE_LLMS, index=6)
+        api_key = st.text_input("API Key:")
+        with st.expander("Customize prompt:"):
+            prompt_string = st.text_area(
+                label="prompt_text",
+                value=DEFAULT_MATERIALS_PROMPT,
+                label_visibility="collapsed",
+                height=300,
+            )
+        st.form_submit_button(
+            "Add LLM",
+            type="primary",
+            on_click=validate_and_add_llm,
+            kwargs={"model_name": model_name, "api_key": api_key, "prompt_string": prompt_string},
+        )
 
 
 with col2:

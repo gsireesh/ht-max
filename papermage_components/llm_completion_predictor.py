@@ -1,9 +1,18 @@
 from dataclasses import dataclass
 from typing import Callable, List
 
-from litellm import completion, check_valid_key, validate_environment
+from litellm import (
+    completion,
+    check_valid_key,
+    validate_environment,
+    open_ai_text_completion_models,
+    anthropic_models,
+)
 from papermage import Entity, Document, Metadata
 from papermage.predictors import BasePredictor
+
+
+AVAILABLE_LLMS = open_ai_text_completion_models + anthropic_models
 
 
 @dataclass
@@ -18,8 +27,7 @@ class LLMValidationResult:
     failure_message: str
 
 
-def generate_materials_ie_prompt(text: str) -> List[LLMMessage]:
-    default_message = """I am working on identifying various entities related to materials science within texts. Below are the categories of entities I'm interested in, along with their definitions and examples. Please read the input text and identify entities according to these categories:
+DEFAULT_MATERIALS_PROMPT = """I am working on identifying various entities related to materials science within texts. Below are the categories of entities I'm interested in, along with their definitions and examples. Please read the input text and identify entities according to these categories:
 Material: Main materials system discussed/developed/manipulated or material used for comparison. Example: Nickel-based Superalloy.
 Participating Materials: Anything interacting with the main material by addition, removal, or as a reaction catalyst. Example: Zirconium.
 Synthesis: Process/tools used to synthesize the material. Examples: Laser Powder Bed Fusion (specific), alloy development (vague).
@@ -58,7 +66,13 @@ Recognize entities in the following text:
         {text}
 """
 
-    return [LLMMessage(role="user", content=default_message.format(text=text))]
+
+def get_prompt_generator(prompt_text: str) -> Callable[[str], List[LLMMessage]]:
+    return lambda text: [LLMMessage(role="user", content=f"{prompt_text}\n\n{text}")]
+
+
+def generate_materials_ie_prompt(text: str) -> List[LLMMessage]:
+    return [LLMMessage(role="user", content=DEFAULT_MATERIALS_PROMPT.format(text=text))]
 
 
 class LLMCompletionPredictor(BasePredictor):
