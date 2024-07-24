@@ -1,13 +1,9 @@
 import re
-from typing import List
 
-from papermage.magelib import Document, Entity
-from papermage.predictors import BasePredictor
 import torch
-from tqdm.auto import tqdm
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 
-from papermage_components.token_classification_predictor import (
+from papermage_components.interfaces.token_classification_predictor import (
     EntityCharSpan,
     TokenClassificationPredictorABC,
 )
