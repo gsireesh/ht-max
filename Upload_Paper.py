@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 import os
 import warnings
@@ -52,16 +53,21 @@ a:hover {
 """
 
 
+@dataclass
+class CustomModelInfo:
+    token_predictors: set[str]
+    llm_predictors: set[LLMCompletionPredictor]
+
+    def is_empty(self):
+        return not (bool(self.token_predictors) or bool(self.llm_predictors))
+
+
 def reset_custom_models():
-    st.session_state[CUSTOM_MODELS_KEY] = set()
-    st.session_state["CUSTOM_LLMS"] = set()
+    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set())
 
 
 if CUSTOM_MODELS_KEY not in st.session_state:
-    st.session_state[CUSTOM_MODELS_KEY] = set()
-
-if "CUSTOM_LLMS" not in st.session_state:
-    st.session_state["CUSTOM_LLMS"] = set()
+    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set())
 
 
 @st.cache_resource
@@ -88,7 +94,7 @@ def validate_and_add_llm(model_name, api_key, prompt_string):
 
     validation_result = llm_predictor.validate()
     if validation_result.is_valid:
-        st.session_state["CUSTOM_LLMS"].add(llm_predictor)
+        st.session_state[CUSTOM_MODELS_KEY].llm_predictors.add(llm_predictor)
     else:
         st.error(validation_result.failure_message)
 
@@ -104,10 +110,10 @@ def process_paper(uploaded_paper, container):
 
             parsed_paper = parse_pdf(paper_filename, recipe)
 
-            for model_name in set(st.session_state[CUSTOM_MODELS_KEY]):
-                with st.status(f"Running model {model_name}") as model_status:
+            for token_predictor in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
+                with st.status(f"Running model {token_predictor}") as model_status:
                     try:
-                        predictor = get_hf_tagger(model_name)
+                        predictor = get_hf_tagger(token_predictor)
                         model_entities = predictor.predict(parsed_paper)
                         parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
                     except Exception as e:
@@ -225,14 +231,14 @@ with col1:
         st.checkbox("Predict blocks", value=True, disabled=True)
         st.checkbox("Predict VILA", value=True, disabled=True)
 
-    if st.session_state.get(CUSTOM_MODELS_KEY) or st.session_state.get("CUSTOM_LLMS"):
+    if not st.session_state.get(CUSTOM_MODELS_KEY).is_empty():
         with st.status("Additional Models:", expanded=True):
             st.write("**HuggingFace Models:**")
-            for model_name in st.session_state[CUSTOM_MODELS_KEY]:
+            for model_name in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
                 st.write(model_name)
 
             st.write("**Custom LLMs**")
-            for model in st.session_state["CUSTOM_LLMS"]:
+            for model in st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
                 st.write(model.predictor_identifier)
 
             st.button("Clear all", on_click=reset_custom_models)
@@ -261,9 +267,9 @@ with col1:
                 "Use this model",
                 type="primary",
                 key=f"use_{model_name}",
-                on_click=lambda custom_model_name: st.session_state[CUSTOM_MODELS_KEY].add(
-                    custom_model_name
-                ),
+                on_click=lambda custom_model_name: st.session_state[
+                    CUSTOM_MODELS_KEY
+                ].token_predictors.add(custom_model_name),
                 kwargs={"custom_model_name": model_name},
             )
 
