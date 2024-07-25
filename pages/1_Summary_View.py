@@ -2,7 +2,7 @@ import pandas as pd
 from streamlit.column_config import TextColumn
 
 from interface_utils import *
-from interface_utils import get_entity_types, infer_tagging_models
+from interface_utils import get_entity_types, infer_token_predictors
 
 
 st.set_page_config(layout="wide")
@@ -67,7 +67,7 @@ with st.sidebar:
 
     st.write("Show predicted results from:")
 
-    for model_name in infer_tagging_models(focus_document):
+    for model_name in infer_token_predictors(focus_document):
         show_model_annotations[model_name] = st.toggle(model_name, value=True)
         if show_model_annotations[model_name]:
             model_entity_types = get_entity_types([model_name])

@@ -59,9 +59,9 @@ with st.sidebar:
 
     st.write("Show tagging results on text from:")
     show_user_highlights = st.toggle("User Highlights", value=False)
-    for model_name in infer_tagging_models(focus_document):
-        show_model_annotations[model_name] = st.toggle(model_name, value=True)
-        if show_model_annotations[model_name]:
+    for model_name in infer_token_predictors(focus_document):
+        show_model_annotations[("token", model_name)] = st.toggle(model_name, value=True)
+        if show_model_annotations[("token", model_name)]:
             model_entity_types = get_entity_types([model_name])
             model_entity_type_filter[model_name] = st.multiselect(
                 "Entity types to display:",
@@ -69,6 +69,8 @@ with st.sidebar:
                 default=model_entity_types,
                 key=f"entity_type_select_{model_name}",
             )
+    for model_name in infer_llm_predictors(focus_document):
+        show_model_annotations[("llm", model_name)] = st.toggle(model_name, value=True)
 
 
 doc_vis_column, sections_column = st.columns([0.4, 0.6])
@@ -123,24 +125,32 @@ with sections_column:
                 )
                 st.markdown("---")
 
-            for model_name, show_model in show_model_annotations.items():
+            for (model_type, model_name), show_model in show_model_annotations.items():
                 if not show_model:
                     continue
-                st.write(f"### Annotations from {model_name}")
-                spacy_doc = visualize_tagged_entities(
-                    paragraph_entity=entity,
-                    spacy_pipeline=get_spacy_pipeline(),
-                    model_name=model_name,
-                    allowed_entity_types=model_entity_type_filter[model_name],
-                )
-                spacy_streamlit.visualize_ner(
-                    spacy_doc,
-                    labels=get_entity_types([model_name]),
-                    show_table=False,
-                    # displacy_options={"colors": MAT_IE_COLORS},
-                    key=f"highlights_{model_name}",
-                    title=None,
-                )
+                elif model_type == "token":
+                    st.write(f"### Annotations from {model_name}")
+                    spacy_doc = visualize_tagged_entities(
+                        paragraph_entity=entity,
+                        spacy_pipeline=get_spacy_pipeline(),
+                        model_name=model_name,
+                        allowed_entity_types=model_entity_type_filter[model_name],
+                    )
+                    spacy_streamlit.visualize_ner(
+                        spacy_doc,
+                        labels=get_entity_types([model_name]),
+                        show_table=False,
+                        # displacy_options={"colors": MAT_IE_COLORS},
+                        key=f"highlights_{model_name}",
+                        title=None,
+                    )
+                elif model_type == "llm":
+                    st.write(f"### Annotations from {model_name}")
+                    predicted_text_entities = getattr(entity, f"TAGGED_GENERATION_{model_name}")
+                    with st.container(border=True):
+                        for text_entity in predicted_text_entities:
+                            predicted_text = text_entity.metadata["predicted_text"]
+                            st.write(predicted_text)
 
     # table by id
     elif isinstance(section_name, int):
