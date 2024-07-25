@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Callable, List
 
 from litellm import (
@@ -110,7 +110,7 @@ class LLMCompletionPredictor(BasePredictor):
         return f"TAGGED_GENERATION_{self.predictor_identifier}"
 
     def generate_from_entity(self, entity: Entity) -> str:
-        messages = self.generate_prompt(entity.text)
+        messages = [asdict(m) for m in self.generate_prompt(entity.text)]
         llm_response = completion(model=self.model_name, api_key=self.api_key, messages=messages)
         response_text = llm_response.choices[0].message.content
         return response_text

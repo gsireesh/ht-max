@@ -120,6 +120,17 @@ def process_paper(uploaded_paper, container):
                         st.write(e)
                         model_status.update("error")
 
+            for llm_predictor in st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
+                with st.status(f"Generating responses from {llm_predictor.predictor_identifier}"):
+                    try:
+                        model_entities = llm_predictor.predict(parsed_paper)
+                        parsed_paper.annotate_layer(
+                            llm_predictor.preferred_layer_name, model_entities
+                        )
+                    except Exception as e:
+                        st.write(e)
+                        model_status.update("error")
+
             with open(
                 os.path.join(PARSED_PAPER_FOLDER, uploaded_paper.name.replace("pdf", "json")), "w"
             ) as f:
