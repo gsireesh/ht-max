@@ -7,7 +7,7 @@ from papermage import Box, Document, Entity, Metadata, CaptionsFieldName
 from papermage.predictors import BasePredictor
 from tqdm.auto import tqdm
 
-from papermage_components.utils import get_table_image, globalize_bbox_coordinates
+from papermage_components.utils import get_table_image, globalize_box_coordinates
 
 
 def get_nearby_captions(table, doc, expansion_factor):
@@ -70,11 +70,11 @@ class ImagePredictorABC(BasePredictor, ABC):
 
             predicted_result = self.process_entity(entity)
 
-            meta_dict = {k: v for k, v in asdict(predicted_result) if v is not None}
+            meta_dict = {k: v for k, v in asdict(predicted_result).items() if v is not None}
 
             if "predicted_boxes" in meta_dict:
                 meta_dict["predicted_bboxes"] = [
-                    globalize_bbox_coordinates(box, entity.boxes[0], doc)
+                    globalize_box_coordinates(box, entity.boxes[0], doc)
                     for box in meta_dict["predicted_boxes"]
                 ]
 

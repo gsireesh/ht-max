@@ -1,13 +1,22 @@
-from typing import List
+from dataclasses import dataclass
 
 import torch
 from torchvision import transforms
 from transformers import TableTransformerForObjectDetection
+from transformers.models.table_transformer.modeling_table_transformer import (
+    TableTransformerObjectDetectionOutput as TatrOutput,
+)
 
 from papermage import Box, Document, Entity, TablesFieldName
-from papermage.predictors import BasePredictor
 from papermage_components.interfaces import ImagePredictionResult, ImagePredictorABC
-from papermage_components.utils import get_table_image, get_text_in_box, globalize_bbox_coordinates
+from papermage_components.utils import get_table_image, get_text_in_box, globalize_box_coordinates
+
+
+@dataclass
+class TatrPrediction:
+    label: str
+    score: float
+    bbox: Box
 
 
 class MaxResize(object):
@@ -23,39 +32,28 @@ class MaxResize(object):
         return resized_image
 
 
-def box_cxcywh_to_xyxy(x):
+def box_cxcywh_to_cornerwh(x: torch.Tensor) -> torch.Tensor:
     x_c, y_c, w, h = x.unbind(-1)
-    b = [(x_c - 0.5 * w), (y_c - 0.5 * h), (x_c + 0.5 * w), (y_c + 0.5 * h)]
+    b = [(x_c - 0.5 * w), (y_c - 0.5 * h), w, h]
     return torch.stack(b, dim=1)
 
 
-def rescale_bboxes(out_bbox, size):
-    img_w, img_h = size
-    b = box_cxcywh_to_xyxy(out_bbox)
-    b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
-    return b
-
-
-def outputs_to_objects(outputs, img_size, id2label):
+def format_model_output(outputs: TatrOutput, id2label: dict[int, str]) -> list[TatrPrediction]:
     m = outputs.logits.softmax(-1).max(-1)
     pred_labels = list(m.indices.detach().cpu().numpy())[0]
     pred_scores = list(m.values.detach().cpu().numpy())[0]
     pred_bboxes = outputs["pred_boxes"].detach().cpu()[0]
-    pred_bboxes = [elem.tolist() for elem in rescale_bboxes(pred_bboxes, img_size)]
+    pred_bboxes = [elem.tolist() for elem in box_cxcywh_to_cornerwh(pred_bboxes)]
 
-    objects = []
+    cell_info = []
     for label, score, bbox in zip(pred_labels, pred_scores, pred_bboxes):
         class_label = id2label[int(label)]
         if not class_label == "no object":
-            objects.append(
-                {
-                    "label": class_label,
-                    "score": float(score),
-                    "bbox": [float(elem) for elem in bbox],
-                }
+            cell_info.append(
+                TatrPrediction(label=class_label, score=float(score), bbox=Box(*bbox, -1))
             )
 
-    return objects
+    return cell_info
 
 
 structure_transform = transforms.Compose(
@@ -68,33 +66,36 @@ structure_transform = transforms.Compose(
 
 
 # Function to find cell coordinates
-def find_cell_coordinates(row, column):
-    cell_bbox = [column["bbox"][0], row["bbox"][1], column["bbox"][2], row["bbox"][3]]
+def find_cell_coordinates(row: TatrPrediction, column: TatrPrediction):
+    cell_bbox = Box(column.bbox.l, row.bbox.t, column.bbox.w, row.bbox.h, -1)
     return cell_bbox
 
 
-def get_cell_coordinates_by_row(table_data):
+def get_header_column_cell_mapping(
+    predictions: list[TatrPrediction],
+) -> list[tuple[Box, list[Box]]]:
     # Extract rows and columns
-    rows = [entry for entry in table_data if entry["label"] == "table row"]
-    columns = [entry for entry in table_data if entry["label"] == "table column"]
-    column_headers = [entry for entry in table_data if entry["label"] == "table column header"]
+    rows = [entry for entry in predictions if entry.label == "table row"]
+    columns = [entry for entry in predictions if entry.label == "table column"]
+    column_headers = [entry for entry in predictions if entry.label == "table column header"]
 
     # Sort rows and columns by their Y and X coordinates, respectively
-    rows.sort(key=lambda x: x["bbox"][1])
-    columns.sort(key=lambda x: x["bbox"][0])
+    rows.sort(key=lambda x: x.bbox.t)
+    columns.sort(key=lambda x: x.bbox.l)
 
     if not column_headers:
-        return {}
+        return []
 
-    table_representation = {}
+    table_representation = []
     for j, column in enumerate(columns):
-        column_heading = tuple(find_cell_coordinates(column_headers[0], column))
-        table_representation[column_heading] = []
+        column_heading = find_cell_coordinates(column_headers[0], column)
+        column_boxes = []
         for i, row in enumerate(rows):
             if i == 0:
                 continue
             cell_bbox = find_cell_coordinates(row, column)
-            table_representation[column_heading].append(cell_bbox)
+            column_boxes.append(cell_bbox)
+        table_representation.append((column_heading, column_boxes))
 
     return table_representation
 
@@ -109,25 +110,31 @@ def shrink_box(box, w_shrink_factor, h_shrink_factor):
 
 
 def convert_table_mapping_to_boxes_and_text(
-    header_to_column_mapping, table_entity, doc, w_shrink, h_shrink
+    header_to_column_mapping: list[tuple[Box, list[Box]]],
+    table_entity: Entity,
+    doc: Document,
+    w_shrink: float,
+    h_shrink: float,
 ):
     table_text_repr = {}
     all_cell_boxes = []
 
-    for header_cell, row_cells in header_to_column_mapping.items():
+    for header_cell, row_cells in header_to_column_mapping:
 
         table_box = table_entity.boxes[0]
         header_box = shrink_box(header_cell, w_shrink, h_shrink)
+        header_box.page = table_entity.boxes[0].page
 
         all_cell_boxes.append(header_box)
-        header_text = get_text_in_box(globalize_bbox_coordinates(header_box, table_box, doc), doc)
+        header_text = get_text_in_box(globalize_box_coordinates(header_box, table_box, doc), doc)
 
         table_text_repr[header_text] = []
         for a_cell in row_cells:
             cell_box = shrink_box(a_cell, w_shrink, h_shrink)
+            cell_box.page = table_entity.boxes[0].page
             all_cell_boxes.append(cell_box)
             table_text_repr[header_text].append(
-                get_text_in_box(globalize_bbox_coordinates(cell_box, table_box, doc), doc)
+                get_text_in_box(globalize_box_coordinates(cell_box, table_box, doc), doc)
             )
 
     return all_cell_boxes, table_text_repr
@@ -149,10 +156,10 @@ class TableTransformerStructurePredictor(ImagePredictorABC):
             outputs = self.model(pixel_values)
         structure_id2label = self.model.config.id2label
         structure_id2label[len(structure_id2label)] = "no object"
-        raw_cells = outputs_to_objects(outputs, table_image.size, structure_id2label)
-        cell_bbox_structure = get_cell_coordinates_by_row(raw_cells)
+        predictions = format_model_output(outputs, structure_id2label)
+        header_column_mapping = get_header_column_cell_mapping(predictions)
 
-        return cell_bbox_structure
+        return header_column_mapping
 
     @classmethod
     def from_model_name(
@@ -170,7 +177,7 @@ class TableTransformerStructurePredictor(ImagePredictorABC):
             header_to_column_mapping, table_entity, doc, self.w_shrink, self.h_shrink
         )
         result = ImagePredictionResult(
-            raw_prediction=header_to_column_mapping,
+            raw_prediction={},
             predicted_boxes=table_boxes,
             predicted_dict=table_dict,
         )
