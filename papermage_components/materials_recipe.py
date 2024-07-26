@@ -142,10 +142,8 @@ class MaterialsRecipe(Recipe):
             self.table_structure_predictor = TableStructurePredictor(
                 app_url=mathpix_endpoint, mathpix_headers=mathpix_token
             )
-
-        self.hf_predictor = HfTokenClassificationPredictor(
-            model_name="tner/roberta-large-ontonotes5", device=gpu_id
-        )
+        else:
+            self.table_structure_predictor = None
 
         self.logger.info("Finished instantiating _recipe")
 
@@ -208,8 +206,10 @@ class MaterialsRecipe(Recipe):
         )
         doc.annotate(*preds)
 
-        self.logger.info("Predicting table structure")
-        self.table_structure_predictor.get_table(doc)
+        if self.table_structure_predictor is not None:
+            self.logger.info("Predicting table structure")
+            self.table_structure_predictor.get_table(doc)
+
         return doc
 
 
