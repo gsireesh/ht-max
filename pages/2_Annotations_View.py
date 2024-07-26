@@ -151,14 +151,12 @@ with sections_column:
                         for text_entity in predicted_text_entities:
                             viz_type = st.selectbox(
                                 "Choose visualization type:",
-                                [
-                                    k.replace("_", " ").title()
-                                    for k, v in text_entity.metadata.items()
-                                    if v
-                                ],
+                                [k for k, v in text_entity.metadata.items() if v],
+                                format_func=lambda x: x.replace("_", " ").title(),
                             )
                             if viz_type == "predicted_table":
                                 st.write(pd.DataFrame(text_entity.metadata[viz_type]))
+                                print(text_entity.metadata[viz_type])
                             else:
                                 predicted_text = text_entity.metadata["predicted_text"]
                                 st.write(predicted_text)

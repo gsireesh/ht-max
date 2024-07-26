@@ -38,8 +38,7 @@ Number: Any numerical value within the text.
 Amount Unit: Unit of the number
 For each identified entity, please provide the entity text, the category from the schema above, and the context in which the entity was identified.
 Format your output as below:
-{{
-"entities": [
+[
     {{
     "entity": "entity1 name",
     "category": "entity2 category",
@@ -51,7 +50,6 @@ Format your output as below:
     "context": "entity2 context",
     }}
 ]
-}}
 
 
 Recognize entities in the following text:
