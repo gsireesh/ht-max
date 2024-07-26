@@ -60,6 +60,7 @@ from papermage_components.matIE_predictor import MatIEPredictor
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
 from papermage_components.table_structure_predictor_mathpix import TableStructurePredictor
+from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
 
 VILA_LABELS_MAP = {
     "Title": TitlesFieldName,
@@ -104,7 +105,7 @@ class MaterialsRecipe(Recipe):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
 
-        self.logger.info("Instantiating recipe...")
+        self.logger.info("Instantiating _recipe...")
         self.pdfplumber_parser = PDFPlumberParser()
         self.grobid_order_parser = GrobidReadingOrderParser(
             grobid_server_url, check_server=True, xml_out_dir=xml_out_dir
@@ -142,7 +143,11 @@ class MaterialsRecipe(Recipe):
                 app_url=mathpix_endpoint, mathpix_headers=mathpix_token
             )
 
-        self.logger.info("Finished instantiating recipe")
+        self.hf_predictor = HfTokenClassificationPredictor(
+            model_name="tner/roberta-large-ontonotes5", device=gpu_id
+        )
+
+        self.logger.info("Finished instantiating _recipe")
 
     def from_pdf(self, pdf: Path) -> Document:
         self.logger.info("Parsing document...")
@@ -173,7 +178,9 @@ class MaterialsRecipe(Recipe):
         if self.matIE_predictor is not None:
             self.logger.info("Predicting MatIE Entities...")
             matIE_entities = self.matIE_predictor.predict(doc=doc)
-            doc.annotate(matIE_entities)
+            doc.annotate_layer(
+                name=self.matIE_predictor.preferred_layer_name, entities=matIE_entities
+            )
 
         self.logger.info("Predicting blocks...")
         with warnings.catch_warnings():
