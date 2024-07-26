@@ -76,6 +76,7 @@ def get_recipe():
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
         gpu_id="mps",
+        dpi=300,
     )
     return recipe
 
