@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 import os
 import warnings
@@ -18,6 +19,12 @@ from streamlit_extras.st_keyup import st_keyup
 from streamlit_extras.stylable_container import stylable_container
 
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
+from papermage_components.llm_completion_predictor import (
+    AVAILABLE_LLMS,
+    DEFAULT_MATERIALS_PROMPT,
+    LiteLlmCompletionPredictor,
+    get_prompt_generator,
+)
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
 from interface_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
 
@@ -46,12 +53,21 @@ a:hover {
 """
 
 
+@dataclass
+class CustomModelInfo:
+    token_predictors: set[str]
+    llm_predictors: set[LiteLlmCompletionPredictor]
+
+    def is_empty(self):
+        return not (bool(self.token_predictors) or bool(self.llm_predictors))
+
+
 def reset_custom_models():
-    st.session_state[CUSTOM_MODELS_KEY] = set()
+    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set())
 
 
 if CUSTOM_MODELS_KEY not in st.session_state:
-    st.session_state[CUSTOM_MODELS_KEY] = set()
+    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set())
 
 
 @st.cache_resource
@@ -60,6 +76,7 @@ def get_recipe():
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
         gpu_id="mps",
+        dpi=300,
     )
     return recipe
 
@@ -67,6 +84,20 @@ def get_recipe():
 @st.cache_resource
 def get_hf_tagger(model_name):
     return HfTokenClassificationPredictor(model_name, device="cpu")
+
+
+def validate_and_add_llm(model_name, api_key, prompt_string):
+    llm_predictor = LiteLlmCompletionPredictor(
+        model_name=model_name,
+        api_key=api_key,
+        prompt_generator_function=get_prompt_generator(prompt_string),
+    )
+
+    validation_result = llm_predictor.validate()
+    if validation_result.is_valid:
+        st.session_state[CUSTOM_MODELS_KEY].llm_predictors.add(llm_predictor)
+    else:
+        st.error(validation_result.failure_message)
 
 
 def process_paper(uploaded_paper, container):
@@ -80,12 +111,23 @@ def process_paper(uploaded_paper, container):
 
             parsed_paper = parse_pdf(paper_filename, recipe)
 
-            for model_name in set(st.session_state[CUSTOM_MODELS_KEY]):
-                with st.status(f"Running model {model_name}") as model_status:
+            for token_predictor in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
+                with st.status(f"Running model {token_predictor}") as model_status:
                     try:
-                        predictor = get_hf_tagger(model_name)
+                        predictor = get_hf_tagger(token_predictor)
                         model_entities = predictor.predict(parsed_paper)
                         parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
+                    except Exception as e:
+                        st.write(e)
+                        model_status.update("error")
+
+            for llm_predictor in st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
+                with st.status(f"Generating responses from {llm_predictor.predictor_identifier}"):
+                    try:
+                        model_entities = llm_predictor.predict(parsed_paper)
+                        parsed_paper.annotate_layer(
+                            llm_predictor.preferred_layer_name, model_entities
+                        )
                     except Exception as e:
                         st.write(e)
                         model_status.update("error")
@@ -190,7 +232,7 @@ def parse_pdf(pdf, _recipe) -> Document:
 
 st.title("Welcome to Collage!")
 
-col1, col2 = st.columns([0.4, 0.6])
+col1, col2 = st.columns([0.6, 0.4])
 with col1:
     st.write("## 1. Customize the pipeline that runs on your paper")
     with st.status("Basic Processing"):
@@ -201,14 +243,21 @@ with col1:
         st.checkbox("Predict blocks", value=True, disabled=True)
         st.checkbox("Predict VILA", value=True, disabled=True)
 
-    if st.session_state.get(CUSTOM_MODELS_KEY):
+    if not st.session_state.get(CUSTOM_MODELS_KEY).is_empty():
         with st.status("Additional Models:", expanded=True):
-            for model_name in st.session_state[CUSTOM_MODELS_KEY]:
+            st.write("**HuggingFace Models:**")
+            for model_name in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
                 st.write(model_name)
+
+            st.write("**Custom LLMs**")
+            for model in st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
+                st.write(model.predictor_identifier)
 
             st.button("Clear all", on_click=reset_custom_models)
 
-    with st.container(border=True):
+    st.divider()
+    hf_tab, llm_tab = st.tabs(["Add HuggingFace Token Classifiers", "Add an LLM Predictor"])
+    with hf_tab, st.container(border=True):
         st.write("### Add a HuggingFace Token Classification Model")
         model_name_input = st_keyup(label="Model Name Filter", debounce=500)
         hf_api = HfApi()
@@ -230,11 +279,31 @@ with col1:
                 "Use this model",
                 type="primary",
                 key=f"use_{model_name}",
-                on_click=lambda custom_model_name: st.session_state[CUSTOM_MODELS_KEY].add(
-                    custom_model_name
-                ),
+                on_click=lambda custom_model_name: st.session_state[
+                    CUSTOM_MODELS_KEY
+                ].token_predictors.add(custom_model_name),
                 kwargs={"custom_model_name": model_name},
             )
+
+    with llm_tab, st.form(key="add_llm"):
+        model_name = st.selectbox(label="Select model:", options=AVAILABLE_LLMS, index=6)
+        api_key = st_keyup(
+            "API Key:",
+            value=os.environ.get("OPENAI_API_KEY", "lolz"),
+        )
+        with st.expander("Customize prompt:"):
+            prompt_string = st.text_area(
+                label="prompt_text",
+                value=DEFAULT_MATERIALS_PROMPT,
+                label_visibility="collapsed",
+                height=300,
+            )
+        st.form_submit_button(
+            "Add LLM",
+            type="primary",
+            on_click=validate_and_add_llm,
+            kwargs={"model_name": model_name, "api_key": api_key, "prompt_string": prompt_string},
+        )
 
 
 with col2:

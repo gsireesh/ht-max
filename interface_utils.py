@@ -30,11 +30,19 @@ def get_spacy_pipeline():
     )
 
 
-def infer_tagging_models(doc: Document) -> list[str]:
+def infer_token_predictors(doc: Document) -> list[str]:
     return [
         layer.replace("TAGGED_ENTITIES_", "")
         for layer in doc.layers
         if layer.startswith("TAGGED_ENTITIES_")
+    ]
+
+
+def infer_llm_predictors(doc: Document) -> list[str]:
+    return [
+        layer.replace("TAGGED_GENERATION_", "")
+        for layer in doc.layers
+        if layer.startswith("TAGGED_GENERATION_")
     ]
 
 

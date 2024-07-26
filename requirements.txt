@@ -9,7 +9,7 @@ dvc-task==0.3.0
 en-core-sci-md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz
 en-core-sci-scibert @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_scibert-0.5.4.tar.gz#sha256=be4afaa2710d63206fafa7864001acbfab1225800bbab577f32765435e29b7f2
 fire==0.5.0
-pandas
+pandas~=1.5.3
 PyMuPDF==1.23.25
 spacy-streamlit==1.0.6
 streamlit==1.36.0
@@ -17,3 +17,17 @@ streamlit-extras==0.4.3
 streamlit-dimensions==0.0.1
 streamlit-image-coordinates==0.1.6
 
+
+papermage~=0.15.0
+huggingface-hub~=0.23.4
+spacy~=3.7.5
+transformers~=4.38.2
+numpy~=1.26.0
+ncls~=0.0.68
+litellm~=1.42.0
+tqdm~=4.66.4
+openai~=1.37.0
+torch~=2.3.1
+torchvision~=0.18.1
+pysbd~=0.3.4
+scispacy~=0.5.3
