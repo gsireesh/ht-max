@@ -73,8 +73,8 @@ class ImagePredictorABC(BasePredictor, ABC):
             meta_dict = {k: v for k, v in asdict(predicted_result).items() if v is not None}
 
             if "predicted_boxes" in meta_dict:
-                meta_dict["predicted_bboxes"] = [
-                    globalize_box_coordinates(box, entity.boxes[0], doc)
+                meta_dict["predicted_boxes"] = [
+                    globalize_box_coordinates(box, entity.boxes[0], doc).to_json()
                     for box in meta_dict["predicted_boxes"]
                 ]
 
@@ -90,6 +90,7 @@ class ImagePredictorABC(BasePredictor, ABC):
                     else:
                         best_candidate = candidate_table_captions[0]
                     predicted_caption = best_candidate.text
+                meta_dict["predicted_caption"] = predicted_caption
 
             image_entity = Entity(
                 spans=entity.spans,

@@ -4,17 +4,16 @@ from streamlit_dimensions import st_dimensions
 from streamlit_image_coordinates import streamlit_image_coordinates
 
 
-from papermage import Box, Entity
+from papermage import Box
 from papermage_components.constants import (
     HIGHLIGHT_COLORS,
     HIGHLIGHT_TYPES,
-    MAT_IE_COLORS,
 )
 
 from interface_utils import *
 from papermage_components.utils import (
-    get_table_image,
     visualize_highlights,
+    visualize_table_with_boxes,
     visualize_tagged_entities,
 )
 
@@ -27,24 +26,6 @@ BOX_PADDING = 0.01
 file_options = os.listdir(PARSED_PAPER_FOLDER)
 show_model_annotations = {}
 model_entity_type_filter = {}
-
-
-def visualize_table_with_boxes(table, doc, include_tokens):
-    table_box = table.boxes[0]
-    table_boxes = [Box.from_json(b) for b in table.metadata["cell_boxes"]]
-    vis_entity = plot_entities_on_page(
-        doc.pages[table_box.page].images[0],
-        entities=[Entity(boxes=table_boxes)],
-        box_width=2,
-        box_color="cornflowerblue",
-    )
-    if include_tokens:
-        vis_entity = plot_entities_on_page(
-            vis_entity, entities=table.tokens, box_width=2, box_color="red"
-        )
-    vis_entity = get_table_image(table, doc, vis_entity.pilimage)
-    return vis_entity
-
 
 with st.sidebar:
     st.write("Select a parsed file whose results to display")

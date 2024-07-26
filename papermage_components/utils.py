@@ -6,6 +6,7 @@ import numpy as np
 
 from papermage import Document, Box, Entity, Span
 from papermage.utils.merge import cluster_and_merge_neighbor_spans
+from papermage.visualizers import plot_entities_on_page
 
 from papermage_components.constants import MAT_IE_TYPES
 
@@ -167,3 +168,20 @@ def get_table_image(table_entity: Entity, doc: Document, page_image=None, expand
         )
     )
     return table_image
+
+
+def visualize_table_with_boxes(table, boxes, doc, include_tokens):
+    table_box = table.boxes[0]
+    table_boxes = [Box.from_json(b) for b in boxes]
+    vis_entity = plot_entities_on_page(
+        doc.pages[table_box.page].images[0],
+        entities=[Entity(boxes=table_boxes)],
+        box_width=2,
+        box_color="cornflowerblue",
+    )
+    if include_tokens:
+        vis_entity = plot_entities_on_page(
+            vis_entity, entities=table.tokens, box_width=2, box_color="red"
+        )
+    vis_entity = get_table_image(table, doc, vis_entity.pilimage)
+    return vis_entity

@@ -78,7 +78,7 @@ def get_recipe():
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
         gpu_id="mps",
-        dpi=300,
+        dpi=150,
     )
     return recipe
 
@@ -163,7 +163,6 @@ def process_paper(uploaded_paper, container):
                 )
 
 
-@st.cache_resource
 def parse_pdf(pdf, _recipe) -> Document:
 
     with st.status("Parsing PDF...") as status:

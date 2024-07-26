@@ -168,6 +168,14 @@ class TableTransformerStructurePredictor(ImagePredictorABC):
         model = TableTransformerForObjectDetection.from_pretrained(model_name)
         return cls(model, device)
 
+    @property
+    def preferred_layer_name(self) -> str:
+        return f"TAGGED_IMAGE_Table_Transformer"
+
+    @property
+    def predictor_identifier(self) -> str:
+        return "Table Transformer Structure Predictor"
+
     def process_entity(self, table_entity: Entity) -> ImagePredictionResult:
         doc = table_entity.layer.doc
         table_image = get_table_image(table_entity, doc)
