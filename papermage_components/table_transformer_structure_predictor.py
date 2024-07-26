@@ -6,7 +6,7 @@ from transformers import TableTransformerForObjectDetection
 
 from papermage import Box, Document, Entity, TablesFieldName
 from papermage.predictors import BasePredictor
-from papermage_components.interfaces
+from papermage_components.interfaces import ImagePredictionResult, ImagePredictorABC
 from papermage_components.utils import get_table_image, get_text_in_box, globalize_bbox_coordinates
 
 
@@ -117,81 +117,28 @@ def convert_table_mapping_to_boxes_and_text(
     for header_cell, row_cells in header_to_column_mapping.items():
 
         table_box = table_entity.boxes[0]
-        header_box = shrink_box(
-            globalize_bbox_coordinates(header_cell, table_box, doc), w_shrink, h_shrink
-        )
+        header_box = shrink_box(header_cell, w_shrink, h_shrink)
 
-        all_cell_boxes.append(header_box.to_json())
-        header_text = get_text_in_box(header_box, doc)
+        all_cell_boxes.append(header_box)
+        header_text = get_text_in_box(globalize_bbox_coordinates(header_box, table_box, doc), doc)
 
         table_text_repr[header_text] = []
         for a_cell in row_cells:
-            cell_box = shrink_box(
-                globalize_bbox_coordinates(a_cell, table_box, doc), w_shrink, h_shrink
+            cell_box = shrink_box(a_cell, w_shrink, h_shrink)
+            all_cell_boxes.append(cell_box)
+            table_text_repr[header_text].append(
+                get_text_in_box(globalize_bbox_coordinates(cell_box, table_box, doc), doc)
             )
-            all_cell_boxes.append(cell_box.to_json())
-            table_text_repr[header_text].append(get_text_in_box(cell_box, doc))
 
     return all_cell_boxes, table_text_repr
 
 
-def get_nearby_captions(table, doc, expansion_factor):
-    box = table.boxes[0]
-
-    exp_h = expansion_factor * box.h
-    diff_h = exp_h - box.h
-
-    search_box = Box(l=box.l, t=box.t - diff_h / 2, w=box.w, h=exp_h, page=box.page)
-    potential_captions = doc.find(query=search_box, name="captions")
-    return potential_captions
-
-
-class TableStructurePredictor(BasePredictor):
+class TableTransformerStructurePredictor(ImagePredictorABC):
     def __init__(self, model, device, w_shrink=0.81, h_shrink=0.72):
+        super().__init__(TablesFieldName)
         self.model = model.to(device)
         self.w_shrink = w_shrink
         self.h_shrink = h_shrink
-
-    @classmethod
-    def from_model_name(
-        cls, model_name="microsoft/table-structure-recognition-v1.1-all", device="cpu"
-    ):
-        model = TableTransformerForObjectDetection.from_pretrained(model_name)
-        return cls(model, device)
-
-    @property
-    def REQUIRED_DOCUMENT_FIELDS(self) -> List[str]:
-        return [TablesFieldName]
-
-    def _predict(self, doc: Document) -> List[Entity]:
-
-        for table in getattr(doc, TablesFieldName):
-
-            table_image = get_table_image(table, doc)
-
-            header_to_column_mapping = self.get_table_structure(table_image)
-
-            table_boxes, table_dict = convert_table_mapping_to_boxes_and_text(
-                header_to_column_mapping, table, doc, self.w_shrink, self.h_shrink
-            )
-
-            table.metadata["cell_boxes"] = table_boxes
-            table.metadata["table_dict"] = table_dict
-            candidate_table_captions = get_nearby_captions(table, doc, expansion_factor=1.4)
-            if candidate_table_captions:
-                if len(candidate_table_captions) > 1:
-                    best_candidate = None
-                    min_dist = 1
-                    for caption in candidate_table_captions:
-                        if abs(caption.boxes[0].t - table.boxes[0].t) < min_dist:
-                            best_candidate = caption
-                else:
-                    best_candidate = candidate_table_captions[0]
-                table.metadata["caption_id"] = best_candidate.id
-
-            # n+=1
-
-        return []
 
     def get_table_structure(
         self,
@@ -206,3 +153,25 @@ class TableStructurePredictor(BasePredictor):
         cell_bbox_structure = get_cell_coordinates_by_row(raw_cells)
 
         return cell_bbox_structure
+
+    @classmethod
+    def from_model_name(
+        cls, model_name="microsoft/table-structure-recognition-v1.1-all", device="cpu"
+    ):
+        model = TableTransformerForObjectDetection.from_pretrained(model_name)
+        return cls(model, device)
+
+    def process_entity(self, table_entity: Entity) -> ImagePredictionResult:
+        doc = table_entity.layer.doc
+        table_image = get_table_image(table_entity, doc)
+        header_to_column_mapping = self.get_table_structure(table_image)
+
+        table_boxes, table_dict = convert_table_mapping_to_boxes_and_text(
+            header_to_column_mapping, table_entity, doc, self.w_shrink, self.h_shrink
+        )
+        result = ImagePredictionResult(
+            raw_prediction=header_to_column_mapping,
+            predicted_boxes=table_boxes,
+            predicted_dict=table_dict,
+        )
+        return result
