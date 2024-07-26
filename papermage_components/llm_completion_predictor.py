@@ -57,7 +57,7 @@ Recognize entities in the following text:
 """
 
 
-class LiteLlmCompletionPredictor(TextGenerationPredictor):
+class LiteLlmCompletionPredictor(TextGenerationPredictorABC):
     def __init__(
         self,
         model_name: str,

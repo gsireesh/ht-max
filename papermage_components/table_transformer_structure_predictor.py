@@ -6,6 +6,7 @@ from transformers import TableTransformerForObjectDetection
 
 from papermage import Box, Document, Entity, TablesFieldName
 from papermage.predictors import BasePredictor
+from papermage_components.interfaces
 from papermage_components.utils import get_table_image, get_text_in_box, globalize_bbox_coordinates
 
 
