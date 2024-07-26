@@ -24,7 +24,8 @@ st.set_page_config(layout="wide")
 BOX_PADDING = 0.01
 
 file_options = os.listdir(PARSED_PAPER_FOLDER)
-show_model_annotations = {}
+show_text_annotations_from = {}
+show_image_annotations_from = {}
 model_entity_type_filter = {}
 
 with st.sidebar:
@@ -41,8 +42,8 @@ with st.sidebar:
     st.write("Show tagging results on text from:")
     show_user_highlights = st.toggle("User Highlights", value=False)
     for model_name in infer_token_predictors(focus_document):
-        show_model_annotations[("token", model_name)] = st.toggle(model_name, value=True)
-        if show_model_annotations[("token", model_name)]:
+        show_text_annotations_from[("token", model_name)] = st.toggle(model_name, value=True)
+        if show_text_annotations_from[("token", model_name)]:
             model_entity_types = get_entity_types([model_name])
             model_entity_type_filter[model_name] = st.multiselect(
                 "Entity types to display:",
@@ -51,7 +52,12 @@ with st.sidebar:
                 key=f"entity_type_select_{model_name}",
             )
     for model_name in infer_llm_predictors(focus_document):
-        show_model_annotations[("llm", model_name)] = st.toggle(model_name, value=True)
+        show_text_annotations_from[("llm", model_name)] = st.toggle(model_name, value=True)
+
+    st.divider()
+    st.write("Show image processing results from:")
+    for model_name in infer_image_predictors(focus_document):
+        show_image_annotations_from[model_name] = st.toggle(model_name, value=True)
 
 
 doc_vis_column, sections_column = st.columns([0.4, 0.6])
@@ -106,7 +112,7 @@ with sections_column:
                 )
                 st.markdown("---")
 
-            for (model_type, model_name), show_model in show_model_annotations.items():
+            for (model_type, model_name), show_model in show_text_annotations_from.items():
                 if not show_model:
                     continue
                 elif model_type == "token":
@@ -145,12 +151,30 @@ with sections_column:
     # table by id
     elif isinstance(section_name, int):
         table = focus_document.tables[section_name]
-        st.write("### Table with model annotations:")
-        show_tokens = st.checkbox("Show Tokens")
-        table_visualized = visualize_table_with_boxes(table, focus_document, show_tokens)
-        st.write(table_visualized)
-        st.write("### Parsed Table:")
-        st.dataframe(pd.DataFrame(table.metadata["table_dict"]), hide_index=True)
+        st.write("### Table, with model annotations:")
+
+        image_layers = [
+            layer for layer in focus_document.layers if layer.startswith("TAGGED_IMAGE_")
+        ]
+
+        for layer in image_layers:
+            model_name = layer.replace("TAGGED_IMAGE_", "")
+            if not show_image_annotations_from[model_name]:
+                continue
+            entities = focus_document.get_layer(layer).find(query=table.boxes[0])
+            for entity in entities:
+                st.write(f"#### Output from {model_name}")
+                if entity.metadata.get("predicted_boxes"):
+                    st.write("**Predicted Boxes:**")
+                    show_tokens = st.checkbox("Show Tokens", key=f"show_tokens_{entity.id}")
+                    table_visualized = visualize_table_with_boxes(
+                        table, entity.metadata["predicted_boxes"], focus_document, show_tokens
+                    )
+                    st.write(table_visualized)
+                parsed_table = entity.metadata.get("predicted_dict")
+                if parsed_table:
+                    st.write("**Parsed Table:**")
+                    st.write(pd.DataFrame(parsed_table))
 
 
 with doc_vis_column:
