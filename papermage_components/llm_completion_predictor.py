@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass
-from typing import Callable, List
+import json
+from json import JSONDecodeError
+from typing import Callable, List, Optional
 
 from litellm import (
     completion,
@@ -11,20 +13,10 @@ from litellm import (
 from papermage import Entity, Document, Metadata
 from papermage.predictors import BasePredictor
 
+from papermage_components.interfaces.text_generation_predictor import *
+
 
 AVAILABLE_LLMS = open_ai_text_completion_models + anthropic_models
-
-
-@dataclass
-class LLMMessage:
-    role: str
-    content: str
-
-
-@dataclass
-class LLMValidationResult:
-    is_valid: bool
-    failure_message: str
 
 
 DEFAULT_MATERIALS_PROMPT = """I am working on identifying various entities related to materials science within texts. Below are the categories of entities I'm interested in, along with their definitions and examples. Please read the input text and identify entities according to these categories:
@@ -67,15 +59,7 @@ Recognize entities in the following text:
 """
 
 
-def get_prompt_generator(prompt_text: str) -> Callable[[str], List[LLMMessage]]:
-    return lambda text: [LLMMessage(role="user", content=f"{prompt_text}\n\n{text}")]
-
-
-def generate_materials_ie_prompt(text: str) -> List[LLMMessage]:
-    return [LLMMessage(role="user", content=DEFAULT_MATERIALS_PROMPT.format(text=text))]
-
-
-class LLMCompletionPredictor(BasePredictor):
+class LiteLlmCompletionPredictor(TextGenerationPredictor):
     def __init__(
         self,
         model_name: str,
@@ -83,10 +67,10 @@ class LLMCompletionPredictor(BasePredictor):
         prompt_generator_function: Callable[[str], List[LLMMessage]],
         entity_to_process="reading_order_sections",
     ):
+        super().__init__(entity_to_process)
         self.model_name = model_name
         self.api_key = api_key
         self.generate_prompt = prompt_generator_function
-        self.entity_to_process = entity_to_process
 
     def validate(self):
         env_validation = validate_environment(model=self.model_name, api_key=self.api_key)
@@ -98,10 +82,6 @@ class LLMCompletionPredictor(BasePredictor):
             return LLMValidationResult(True, "")
 
     @property
-    def REQUIRED_DOCUMENT_FIELDS(self) -> List[str]:
-        return [self.entity_to_process]
-
-    @property
     def predictor_identifier(self) -> str:
         return self.model_name
 
@@ -109,22 +89,10 @@ class LLMCompletionPredictor(BasePredictor):
     def preferred_layer_name(self):
         return f"TAGGED_GENERATION_{self.predictor_identifier}"
 
-    def generate_from_entity(self, entity: Entity) -> str:
+    def generate_from_entity_textte(self, entity: Entity) -> str:
         messages = [asdict(m) for m in self.generate_prompt(entity.text)]
-        llm_response = completion(model=self.model_name, api_key=self.api_key, messages=messages)
+        llm_response = completion(
+            model=self.model_name, api_key=self.api_key, messages=messages, max_tokens=2500
+        )
         response_text = llm_response.choices[0].message.content
         return response_text
-
-    def _predict(self, doc: Document) -> list[Entity]:
-        all_entities = []
-
-        for entity in getattr(doc, self.entity_to_process):
-            generated_text = self.generate_from_entity(entity)
-            predicted_entity = Entity(
-                spans=entity.spans,
-                boxes=entity.boxes,
-                images=entity.images,
-                metadata=Metadata(predicted_text=generated_text),
-            )
-            all_entities.append(predicted_entity)
-        return all_entities

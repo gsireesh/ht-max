@@ -149,8 +149,19 @@ with sections_column:
                     predicted_text_entities = getattr(entity, f"TAGGED_GENERATION_{model_name}")
                     with st.container(border=True):
                         for text_entity in predicted_text_entities:
-                            predicted_text = text_entity.metadata["predicted_text"]
-                            st.write(predicted_text)
+                            viz_type = st.selectbox(
+                                "Choose visualization type:",
+                                [
+                                    k.replace("_", " ").title()
+                                    for k, v in text_entity.metadata.items()
+                                    if v
+                                ],
+                            )
+                            if viz_type == "predicted_table":
+                                st.write(pd.DataFrame(text_entity.metadata[viz_type]))
+                            else:
+                                predicted_text = text_entity.metadata["predicted_text"]
+                                st.write(predicted_text)
 
     # table by id
     elif isinstance(section_name, int):

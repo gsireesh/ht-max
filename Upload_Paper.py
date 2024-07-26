@@ -22,7 +22,7 @@ from papermage_components.hf_token_classification_predictor import HfTokenClassi
 from papermage_components.llm_completion_predictor import (
     AVAILABLE_LLMS,
     DEFAULT_MATERIALS_PROMPT,
-    LLMCompletionPredictor,
+    LiteLlmCompletionPredictor,
     get_prompt_generator,
 )
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
@@ -56,7 +56,7 @@ a:hover {
 @dataclass
 class CustomModelInfo:
     token_predictors: set[str]
-    llm_predictors: set[LLMCompletionPredictor]
+    llm_predictors: set[LiteLlmCompletionPredictor]
 
     def is_empty(self):
         return not (bool(self.token_predictors) or bool(self.llm_predictors))
@@ -86,7 +86,7 @@ def get_hf_tagger(model_name):
 
 
 def validate_and_add_llm(model_name, api_key, prompt_string):
-    llm_predictor = LLMCompletionPredictor(
+    llm_predictor = LiteLlmCompletionPredictor(
         model_name=model_name,
         api_key=api_key,
         prompt_generator_function=get_prompt_generator(prompt_string),
@@ -286,7 +286,10 @@ with col1:
 
     with llm_tab, st.form(key="add_llm"):
         model_name = st.selectbox(label="Select model:", options=AVAILABLE_LLMS, index=6)
-        api_key = st.text_input("API Key:")
+        api_key = st_keyup(
+            "API Key:",
+            value=os.environ.get("OPENAI_API_KEY", "lolz"),
+        )
         with st.expander("Customize prompt:"):
             prompt_string = st.text_area(
                 label="prompt_text",
