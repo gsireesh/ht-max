@@ -79,6 +79,7 @@ class ImagePredictorABC(BasePredictor, ABC):
                 ]
 
             if self.find_caption:
+                predicted_caption = "No caption found."
                 candidate_table_captions = get_nearby_captions(entity, doc, expansion_factor=1.4)
                 if candidate_table_captions:
                     if len(candidate_table_captions) > 1:
