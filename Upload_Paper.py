@@ -27,6 +27,7 @@ from papermage_components.llm_completion_predictor import (
 )
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
 from interface_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
+from local_model_config import AVAILABLE_LOCAL_MODELS
 
 
 st.set_page_config(layout="wide")
@@ -57,17 +58,18 @@ a:hover {
 class CustomModelInfo:
     token_predictors: set[str]
     llm_predictors: set[LiteLlmCompletionPredictor]
+    local_predictors: set[str]
 
     def is_empty(self):
         return not (bool(self.token_predictors) or bool(self.llm_predictors))
 
 
 def reset_custom_models():
-    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set())
+    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set(), set())
 
 
 if CUSTOM_MODELS_KEY not in st.session_state:
-    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set())
+    st.session_state[CUSTOM_MODELS_KEY] = CustomModelInfo(set(), set(), set())
 
 
 @st.cache_resource
@@ -76,7 +78,7 @@ def get_recipe():
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
         gpu_id="mps",
-        dpi=300,
+        dpi=150,
     )
     return recipe
 
@@ -110,6 +112,16 @@ def process_paper(uploaded_paper, container):
             recipe = get_recipe()
 
             parsed_paper = parse_pdf(paper_filename, recipe)
+
+            for local_predictor in st.session_state[CUSTOM_MODELS_KEY].local_predictors:
+                with st.status(f"Running model {local_predictor}") as model_status:
+                    try:
+                        predictor = AVAILABLE_LOCAL_MODELS[local_predictor].get_model()
+                        model_entities = predictor.predict(parsed_paper)
+                        parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
+                    except Exception as e:
+                        st.write(e)
+                        model_status.update("error")
 
             for token_predictor in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
                 with st.status(f"Running model {token_predictor}") as model_status:
@@ -243,15 +255,26 @@ with col1:
         st.checkbox("Predict blocks", value=True, disabled=True)
         st.checkbox("Predict VILA", value=True, disabled=True)
 
+    with st.status("Available custom models:", expanded=True):
+        for model_info in AVAILABLE_LOCAL_MODELS.values():
+            model_name = model_info.model_name
+            use_model = st.checkbox(model_name)
+            if use_model:
+                st.session_state[CUSTOM_MODELS_KEY].local_predictors.add(model_name)
+            else:
+                st.session_state[CUSTOM_MODELS_KEY].local_predictors.discard(model_name)
+
     if not st.session_state.get(CUSTOM_MODELS_KEY).is_empty():
         with st.status("Additional Models:", expanded=True):
-            st.write("**HuggingFace Models:**")
-            for model_name in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
-                st.write(model_name)
+            if st.session_state[CUSTOM_MODELS_KEY].token_predictors:
+                st.write("**HuggingFace Models:**")
+                for model_name in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
+                    st.write(model_name)
 
-            st.write("**Custom LLMs**")
-            for model in st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
-                st.write(model.predictor_identifier)
+            if st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
+                st.write("**Custom LLMs:**")
+                for model in st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
+                    st.write(model.predictor_identifier)
 
             st.button("Clear all", on_click=reset_custom_models)
 

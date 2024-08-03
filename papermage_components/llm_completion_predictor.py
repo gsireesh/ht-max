@@ -57,7 +57,7 @@ Recognize entities in the following text:
 """
 
 
-class LiteLlmCompletionPredictor(TextGenerationPredictor):
+class LiteLlmCompletionPredictor(TextGenerationPredictorABC):
     def __init__(
         self,
         model_name: str,
@@ -87,8 +87,8 @@ class LiteLlmCompletionPredictor(TextGenerationPredictor):
     def preferred_layer_name(self):
         return f"TAGGED_GENERATION_{self.predictor_identifier}"
 
-    def generate_from_entity_textte(self, entity: Entity) -> str:
-        messages = [asdict(m) for m in self.generate_prompt(entity.text)]
+    def generate_from_entity_text(self, entity_text: str) -> str:
+        messages = [asdict(m) for m in self.generate_prompt(entity_text)]
         llm_response = completion(
             model=self.model_name, api_key=self.api_key, messages=messages, max_tokens=2500
         )

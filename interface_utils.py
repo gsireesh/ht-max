@@ -46,6 +46,14 @@ def infer_llm_predictors(doc: Document) -> list[str]:
     ]
 
 
+def infer_image_predictors(doc: Document) -> list[str]:
+    return [
+        layer.replace("TAGGED_IMAGE_", "")
+        for layer in doc.layers
+        if layer.startswith("TAGGED_IMAGE_")
+    ]
+
+
 @st.cache_data
 def get_hf_entity_types(model_name):
     model_config = AutoConfig.from_pretrained(model_name)

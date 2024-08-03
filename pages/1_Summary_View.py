@@ -3,13 +3,14 @@ from streamlit.column_config import TextColumn
 
 from interface_utils import *
 from interface_utils import get_entity_types, infer_token_predictors
-
+from papermage_components.utils import visualize_table_with_boxes
 
 st.set_page_config(layout="wide")
 
 
 file_options = os.listdir(PARSED_PAPER_FOLDER)
-show_model_annotations = {}
+show_text_annotations_from = {}
+show_image_annotations_from = {}
 model_entity_type_filter = {}
 
 
@@ -33,6 +34,11 @@ def get_tagged_entities(doc, model_name, allowed_sections, allowed_types):
             )
 
     return all_entities
+
+
+def get_processed_images(doc, model_name):
+    layer = getattr(doc, f"TAGGED_IMAGE_{model_name}")
+    return layer.entities
 
 
 def get_tables(doc, filter_string):
@@ -68,8 +74,8 @@ with st.sidebar:
     st.write("Show predicted results from:")
 
     for model_name in infer_token_predictors(focus_document):
-        show_model_annotations[model_name] = st.toggle(model_name, value=True)
-        if show_model_annotations[model_name]:
+        show_text_annotations_from[model_name] = st.toggle(model_name, value=True)
+        if show_text_annotations_from[model_name]:
             model_entity_types = get_entity_types([model_name])
             model_entity_type_filter[model_name] = st.multiselect(
                 "Entity types to display:",
@@ -78,13 +84,22 @@ with st.sidebar:
                 key=f"entity_type_select_{model_name}",
             )
 
+    st.divider()
+    for model_name in infer_image_predictors(focus_document):
+        show_image_annotations_from[model_name] = st.toggle(model_name, value=True)
+
 
 entities_column, table_column = st.columns([0.5, 0.5])
 with entities_column:
     st.write("## Tagged Entities")
     all_sections = {e.metadata["section_name"] for e in focus_document.reading_order_sections}
+
     all_entity_types = get_entity_types(
-        [model_name for model in show_model_annotations if show_model_annotations[model]]
+        [
+            model_name
+            for model_name in show_text_annotations_from
+            if show_text_annotations_from[model_name]
+        ]
     )
 
     section_choice = st.multiselect(
@@ -94,7 +109,7 @@ with entities_column:
     )
 
     entities = []
-    for predictor_name, show in show_model_annotations.items():
+    for predictor_name, show in show_text_annotations_from.items():
         if show:
             entities = entities + get_tagged_entities(
                 focus_document,
@@ -116,24 +131,43 @@ with entities_column:
         },
     )
 
-with table_column:
-    st.write("## Parsed Tables")
-    text_filter = st.text_input(
-        "table_filter",
-        label_visibility="collapsed",
-        placeholder="Filter tables based on captions or column headers:",
-    )
+with (table_column):
+    st.write("## Processed Images")
+    # text_filter = st.text_input(
+    #     "table_filter",
+    #     label_visibility="collapsed",
+    #     placeholder="Filter tables based on captions or column headers:",
+    # )
 
-    filtered_tables = get_tables(focus_document, text_filter)
-    st.write(f"Found {len(filtered_tables)} matching tables")
-    for table in filtered_tables:
-        with st.container(border=True):
-            table_dict = table.metadata["table_dict"]
-            st.dataframe(pd.DataFrame(table_dict))
-            table_page = table.boxes[0].page
-            caption_id = table.metadata.get("caption_id")
-            if caption_id:
-                caption = focus_document.captions[caption_id].text
-                substring_idx = caption.lower().index("table") if "table" in caption.lower() else 0
-                st.write(f"**Identified Caption**: {caption[substring_idx:]}")
-            st.write(f"From page {table_page + 1}")
+    for model_name, show_model in show_image_annotations_from.items():
+        if show_model:
+            result_entities = get_processed_images(focus_document, model_name)
+            display_format = st.selectbox(
+                "Visualization Format",
+                result_entities[0].metadata.keys(),
+                format_func=lambda x: x.replace("_", " ").title(),
+                index=1,
+            )
+            for entity in result_entities:
+                if not entity.metadata[display_format]:
+                    continue
+                with st.container(border=True):
+                    if display_format == "raw_predictions" and entity.metadata.get(
+                        "raw_predictions"
+                    ):
+                        st.write(entity.metadata["raw_predictions"])
+                    elif display_format == "predicted_dict" and entity.metadata.get(
+                        "predicted_dict"
+                    ):
+                        st.write(pd.DataFrame(entity.metadata["predicted_dict"]))
+                    elif display_format == "predicted_boxes" and entity.metadata.get(
+                        "predicted_boxes"
+                    ):
+                        table_visualized = visualize_table_with_boxes(
+                            entity, entity.metadata.get("predicted_boxes"), focus_document, False
+                        )
+                        st.write(table_visualized)
+
+                    st.write(f"**Location**: Page {entity.boxes[0].page}")
+                    if caption := entity.metadata.get("predicted_caption"):
+                        st.write(f"**Best guess caption:** {caption}")

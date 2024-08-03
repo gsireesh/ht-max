@@ -6,6 +6,7 @@ import numpy as np
 
 from papermage import Document, Box, Entity, Span
 from papermage.utils.merge import cluster_and_merge_neighbor_spans
+from papermage.visualizers import plot_entities_on_page
 
 from papermage_components.constants import MAT_IE_TYPES
 
@@ -45,9 +46,13 @@ def globalize_bbox_coordinates(bbox, context_box, doc):
     return Box(bbox_left, bbox_top, bbox_width, bbox_height, page=context_box.page)
 
 
-def get_text_from_localized_bbox(bbox, context_box, doc):
-    global_box = globalize_bbox_coordinates(bbox, context_box, doc)
-    return get_text_in_box(global_box, doc)
+def globalize_box_coordinates(box: Box, context_box: Box, doc):
+    page_width, page_height = doc.pages[context_box.page].images[0].pilimage.size
+    bbox_left = context_box.l + (box.l * context_box.w)
+    bbox_top = context_box.t + (box.t * context_box.h)
+    bbox_width = box.w * context_box.w
+    bbox_height = box.h * context_box.h
+    return Box(bbox_left, bbox_top, bbox_width, bbox_height, page=context_box.page)
 
 
 def merge_overlapping_entities(entities):
@@ -147,7 +152,7 @@ def visualize_tagged_entities(paragraph_entity, spacy_pipeline, model_name, allo
     return para_doc
 
 
-def get_table_image(table_entity: Entity, doc: Document, page_image=None, expand_box_by = 0.01):
+def get_table_image(table_entity: Entity, doc: Document, page_image=None, expand_box_by=0.01):
     if len(table_entity.boxes) > 1:
         raise AssertionError("Table has more than one box!!")
     box = table_entity.boxes[0]
@@ -156,10 +161,27 @@ def get_table_image(table_entity: Entity, doc: Document, page_image=None, expand
     page_w, page_h = page_image.size
     table_image = page_image.crop(
         (
-            (box.l-expand_box_by) * page_w,
-            (box.t-expand_box_by) * page_h,
+            (box.l - expand_box_by) * page_w,
+            (box.t - expand_box_by) * page_h,
             (box.l + box.w) * page_w,
             (box.t + box.h) * page_h,
         )
     )
     return table_image
+
+
+def visualize_table_with_boxes(table, boxes, doc, include_tokens):
+    table_box = table.boxes[0]
+    table_boxes = [Box.from_json(b) for b in boxes]
+    vis_entity = plot_entities_on_page(
+        doc.pages[table_box.page].images[0],
+        entities=[Entity(boxes=table_boxes)],
+        box_width=2,
+        box_color="cornflowerblue",
+    )
+    if include_tokens:
+        vis_entity = plot_entities_on_page(
+            vis_entity, entities=table.tokens, box_width=2, box_color="red"
+        )
+    vis_entity = get_table_image(table, doc, vis_entity.pilimage)
+    return vis_entity

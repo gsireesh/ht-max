@@ -32,7 +32,7 @@ def get_prompt_generator(prompt_text: str) -> Callable[[str], List[LLMMessage]]:
     return lambda text: [LLMMessage(role="user", content=f"{prompt_text}\n\n{text}")]
 
 
-class TextGenerationPredictor(BasePredictor, ABC):
+class TextGenerationPredictorABC(BasePredictor, ABC):
     def __init__(self, entity_to_process):
         self.entity_to_process = entity_to_process
 
