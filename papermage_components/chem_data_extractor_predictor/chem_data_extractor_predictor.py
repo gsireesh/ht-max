@@ -18,6 +18,10 @@ class ChemDataExtractorPredictor(TokenClassificationPredictorABC):
     def predictor_identifier(self) -> str:
         return "ChemDataExtractor"
 
+    @property
+    def entity_types(self) -> set[str]:
+        return {"CDE_Chemical"}
+
     def tag_entities_in_batch(self, batch: List[str]) -> List[List[EntityCharSpan]]:
         req = requests.post(self.cde_service_url + "/annotate_strings", json=batch, timeout=300)
 

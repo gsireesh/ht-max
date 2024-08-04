@@ -66,6 +66,10 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
     def preferred_layer_name(self) -> str:
         return f"TAGGED_ENTITIES_{self.predictor_identifier}"
 
+    @property
+    def entity_types(self) -> set[str]:
+        raise NotImplementedError
+
     def tag_entities_in_batch(self, batch: list[str]) -> list[list[EntityCharSpan]]:
         raise NotImplementedError()
 
