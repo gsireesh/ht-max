@@ -13,7 +13,7 @@ from papermage_components.constants import MAT_IE_TYPES
 from app_config import app_config as config
 
 
-PARSED_PAPER_FOLDER = config["processed_pdf_folder"]
+PARSED_PAPER_FOLDER = config["processed_paper_path"]
 CUSTOM_MODELS_KEY = "custom_models"
 
 
