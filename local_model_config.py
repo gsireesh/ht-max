@@ -24,6 +24,10 @@ def get_table_transformer_predictor():
     return TableTransformerStructurePredictor.from_model_name()
 
 
+def get_cde_predictor():
+    return ChemDataExtractorPredictor(cde_service_url="http://panther.lti.cs.cmu.edu:8001")
+
+
 MODEL_LIST: list[LocalModelInfo] = [
     LocalModelInfo(
         model_name="Table Transformer Structure Parser",
@@ -33,7 +37,7 @@ MODEL_LIST: list[LocalModelInfo] = [
     LocalModelInfo(
         model_name="ChemDataExtractor Token Tagger",
         model_desc="A model that uses ChemDataExtractor to tag chemicals.",
-        get_model=lambda: ChemDataExtractorPredictor("http://localhost:8000"),
+        get_model=get_cde_predictor,
     ),
 ]
 
