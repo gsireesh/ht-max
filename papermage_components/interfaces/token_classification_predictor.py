@@ -9,6 +9,8 @@ from tqdm.auto import tqdm
 
 @dataclass
 class EntityCharSpan:
+    """Represents a tagged entity on a string."""
+
     e_type: str
     start_char: int
     end_char: int
@@ -16,6 +18,18 @@ class EntityCharSpan:
 
 
 def map_char_spans_to_entity(sentence: Entity, entities: list[EntityCharSpan]) -> list[Entity]:
+    """Map a list of entities onto the given sentence's spans.
+
+    Parameters
+    ----------
+    sentence : The sentence onto whose spans to map the entities. These spans will be relative to
+        global document positioning, and a given sentence may have more than one span.
+    entities : the entities with sentence-local spans to globalize.
+
+    Returns
+    -------
+    A list of Entities with globalized spans.
+    """
     all_entities = []
 
     # compute a map of offsets from the beginning of the sentence to every position in it
@@ -60,6 +74,7 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
 
     @property
     def predictor_identifier(self) -> str:
+        """MUST IMPLEMENT! Usually the name of the underlying model."""
         raise NotImplementedError
 
     @property
@@ -71,9 +86,32 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
         raise NotImplementedError
 
     def tag_entities_in_batch(self, batch: list[str]) -> list[list[EntityCharSpan]]:
+        """Tag entities in the given list of strings, that represents a batch.
+
+        Parameters
+        ----------
+        batch : The list of strings to annotate.
+
+        Returns
+        -------
+        A list of EntityCharSpans per sentence that represent the tagged entities.
+        """
         raise NotImplementedError()
 
     def generate_batches(self, doc: Document) -> list[list[tuple[Entity, str]]]:
+        """Generate batches of sentences from a document. Override this for custom batching logic.
+
+        Parameters
+        ----------
+        doc : The document to use to generate batches.
+
+        Returns
+        -------
+        A list of batches, each of which is a pair of Entity and its associated text. This is
+        required such that we can map annotations on the string back to the document, and you can
+        also apply any length-invariant transformations of the input text, e.g. replacing newlines
+        with spaces, or casing.
+        """
         all_batches = []
         already_processed_sentences = set()
         for para_idx, paragraph in enumerate(getattr(doc, self.entity_to_process)):

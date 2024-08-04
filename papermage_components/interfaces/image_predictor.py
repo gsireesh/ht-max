@@ -23,10 +23,11 @@ def get_nearby_captions(table, doc, expansion_factor):
 
 @dataclass
 class ImagePredictionResult:
+    """Union type to represent the results of parsing an image"""
+
     raw_prediction: dict
 
     # if the predictions take the form of either a table, or arbitrary key/value.
-    predicted_table: pd.DataFrame = None
     predicted_dict: dict = None
 
     # if the predictions are bounding boxes.
@@ -38,6 +39,13 @@ class ImagePredictionResult:
 
 class ImagePredictorABC(BasePredictor, ABC):
     def __init__(self, entity_to_process: str, find_caption: bool = True):
+        """Init.
+
+        Parameters
+        ----------
+        entity_to_process : What PaperMage layer to iterate through and annotate. Usually "tables"
+        find_caption : Whether to use heuristics to find the caption of the given table/image.
+        """
         self.entity_to_process = entity_to_process
         self.find_caption = find_caption
 
@@ -47,6 +55,7 @@ class ImagePredictorABC(BasePredictor, ABC):
 
     @property
     def predictor_identifier(self) -> str:
+        """MUST IMPLEMENT! Usually the name of the underlying model."""
         raise NotImplementedError
 
     @property
