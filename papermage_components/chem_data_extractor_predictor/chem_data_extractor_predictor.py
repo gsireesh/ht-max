@@ -28,7 +28,7 @@ class ChemDataExtractorPredictor(TokenClassificationPredictorABC):
                     e_type=e["entity_type"],
                     start_char=e["start_char"],
                     end_char=e["end_char"],
-                    metadata=Metadata(),
+                    metadata={},
                 )
                 for e in instance
             ]
