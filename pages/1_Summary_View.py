@@ -131,7 +131,7 @@ with entities_column:
         },
     )
 
-with (table_column):
+with table_column:
     st.write("## Processed Images")
     # text_filter = st.text_input(
     #     "table_filter",
@@ -164,7 +164,10 @@ with (table_column):
                         "predicted_boxes"
                     ):
                         table_visualized = visualize_table_with_boxes(
-                            entity, entity.metadata.get("predicted_boxes"), focus_document, False
+                            entity,
+                            entity.metadata.get("predicted_boxes"),
+                            focus_document,
+                            False,
                         )
                         st.write(table_visualized)
 
