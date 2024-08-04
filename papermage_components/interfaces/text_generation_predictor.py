@@ -49,7 +49,7 @@ class TextGenerationPredictorABC(BasePredictor, ABC):
 
     @property
     def preferred_layer_name(self):
-        raise NotImplementedError
+        return f"TAGGED_GENERATION_{self.predictor_identifier}"
 
     def generate_from_entity_text(self, entity_text: str) -> str:
         raise NotImplementedError

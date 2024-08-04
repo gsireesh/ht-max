@@ -53,7 +53,7 @@ def map_char_spans_to_entity(sentence: Entity, entities: list[EntityCharSpan]) -
 class TokenClassificationPredictorABC(BasePredictor, ABC):
     @property
     def REQUIRED_DOCUMENT_FIELDS(self) -> list[str]:
-        return ["reading_order_sections"]
+        return [self.entity_to_process]
 
     @property
     def predictor_identifier(self) -> str:
@@ -69,8 +69,7 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
     def generate_batches(self, doc: Document) -> list[list[tuple[Entity, str]]]:
         all_batches = []
         already_processed_sentences = set()
-        for para_idx, paragraph in enumerate(doc.reading_order_sections):
-
+        for para_idx, paragraph in enumerate(getattr(doc, self.entity_to_process)):
             paragraph_sentences = [
                 sentence
                 for sentence in paragraph.sentences
