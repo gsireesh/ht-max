@@ -16,6 +16,42 @@ PARSED_PAPER_FOLDER = "data/Midyear_Review_Papers_Parsed"
 CUSTOM_MODELS_KEY = "custom_models"
 
 
+class EntityColorMapper:
+    def __init__(self):
+        self.color_list = [
+            "gold",
+            "hotpink",
+            "lightcoral",
+            "darkkhaki",
+            "violet",
+            "mediumpurple",
+            "deepskyblue",
+            "aquamarine",
+            "lime",
+            "tomato",
+            "sandybrown",
+            "bisque",
+            "orange",
+            "yellowgreen",
+            "lightgrey",
+            "cornflowerblue",
+            "lightgreen",
+        ]
+        self.entity_type_to_color = {}
+
+    def get_entity_colors(self, entity_types):
+        color_map = {}
+        for e_type in entity_types:
+            if e_type in self.entity_type_to_color:
+                color_map[e_type] = self.entity_type_to_color[e_type]
+            else:
+                color = self.color_list.pop()
+                self.entity_type_to_color[e_type] = color
+                color_map[e_type] = color
+
+        return color_map
+
+
 @st.cache_resource
 def load_document(doc_filename):
     with open(os.path.join(PARSED_PAPER_FOLDER, doc_filename)) as f:

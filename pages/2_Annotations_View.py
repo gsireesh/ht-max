@@ -28,6 +28,9 @@ show_text_annotations_from = {}
 show_image_annotations_from = {}
 model_entity_type_filter = {}
 
+if "entity_type_colors" not in st.session_state:
+    st.session_state["entity_type_colors"] = EntityColorMapper()
+
 with st.sidebar:
     st.write("Select a parsed file whose results to display")
     focus_file = st.session_state.get("focus_document")
@@ -123,11 +126,16 @@ with sections_column:
                         model_name=model_name,
                         allowed_entity_types=model_entity_type_filter[model_name],
                     )
+                    entity_types = list(get_entity_types(model_name, focus_document))
                     spacy_streamlit.visualize_ner(
                         spacy_doc,
-                        labels=list(get_entity_types(model_name, focus_document)),
+                        labels=entity_types,
                         show_table=False,
-                        # displacy_options={"colors": MAT_IE_COLORS},
+                        displacy_options={
+                            "colors": st.session_state["entity_type_colors"].get_entity_colors(
+                                entity_types
+                            )
+                        },
                         key=f"highlights_{model_name}",
                         title=None,
                     )
