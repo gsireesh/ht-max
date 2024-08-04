@@ -7,7 +7,7 @@ from streamlit import cache_resource
 from papermage_components.table_transformer_structure_predictor import (
     TableTransformerStructurePredictor,
 )
-from papermage_components.chem_data_extractor_predictor.chem_data_extractor_predictor import (
+from papermage_components.chem_data_extractor_predictor import (
     ChemDataExtractorPredictor,
 )
 
