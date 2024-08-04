@@ -105,18 +105,21 @@ class MathPixTableStructurePredictor(ImagePredictorABC):
         return f"TAGGED_IMAGE_{self.predictor_identifier}"
 
     def process_image(self, image) -> ImagePredictionResult:
-        math_pix_input = get_mathpix_input(encode_image(image))
-        response = requests.post(MATHPIX_ENDPOINT, headers=self.headers, json=math_pix_input)
-        response_data = response.json()
-        if "error_info" in response_data.keys():
-            raise Exception("MathPix failed to parse a table!")
-        tsv_data = response_data["data"][0]["value"]
-        latex_data = response_data["text"]
-        json_data = convert_mathpix_to_json(tsv_data, latex_data)
+        try:
+            math_pix_input = get_mathpix_input(encode_image(image))
+            response = requests.post(MATHPIX_ENDPOINT, headers=self.headers, json=math_pix_input)
+            response_data = response.json()
+            if "error_info" in response_data.keys():
+                raise Exception(f"MathPix failed to parse a table!: {response_data['error_info']}")
+            tsv_data = response_data["data"][0]["value"]
+            latex_data = response_data["text"]
+            json_data = convert_mathpix_to_json(tsv_data, latex_data)
 
-        table_data = ImagePredictionResult(
-            raw_prediction=tsv_data,
-            predicted_dict=json_data,
-        )
+            table_data = ImagePredictionResult(
+                raw_prediction=tsv_data,
+                predicted_dict=json_data,
+            )
 
-        return table_data
+            return table_data
+        except Exception as e:
+            raise e
