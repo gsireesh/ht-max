@@ -64,19 +64,23 @@ class ImagePredictorABC(BasePredictor, ABC):
         all_entities = []
 
         for entity in tqdm(getattr(doc, self.entity_to_process)):
+            try:
+                if len(entity.boxes) > 1:
+                    raise AssertionError("Entity has more than one box!")
 
-            if len(entity.boxes) > 1:
-                raise AssertionError("Entity has more than one box!")
+                predicted_result = self.process_entity(entity)
 
-            predicted_result = self.process_entity(entity)
+                meta_dict = {k: v for k, v in asdict(predicted_result).items() if v is not None}
 
-            meta_dict = {k: v for k, v in asdict(predicted_result).items() if v is not None}
+                if "predicted_boxes" in meta_dict:
+                    meta_dict["predicted_boxes"] = [
+                        globalize_box_coordinates(box, entity.boxes[0], doc).to_json()
+                        for box in meta_dict["predicted_boxes"]
+                    ]
 
-            if "predicted_boxes" in meta_dict:
-                meta_dict["predicted_boxes"] = [
-                    globalize_box_coordinates(box, entity.boxes[0], doc).to_json()
-                    for box in meta_dict["predicted_boxes"]
-                ]
+            except Exception as e:
+                print("Failed to parse table! Continuing")
+                continue
 
             if self.find_caption:
                 predicted_caption = "No caption found."
