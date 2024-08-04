@@ -25,6 +25,7 @@ from papermage_components.llm_completion_predictor import (
     DEFAULT_MATERIALS_PROMPT,
     LiteLlmCompletionPredictor,
     get_prompt_generator,
+    check_valid_key,
 )
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
 from interface_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
@@ -313,12 +314,15 @@ with col1:
                 kwargs={"custom_model_name": model_name},
             )
 
-    with llm_tab, st.form(key="add_llm"):
+    with llm_tab, st.container(border=True):
         model_name = st.selectbox(label="Select model:", options=AVAILABLE_LLMS, index=6)
-        api_key = st_keyup(
-            "API Key:",
-            value=os.environ.get("OPENAI_API_KEY", "lolz"),
-        )
+        api_key = st_keyup("API Key:", value=os.environ.get("OPENAI_API_KEY", ""), debounce=500)
+
+        if check_valid_key(model=model_name, api_key=api_key):
+            st.write("✅ Valid API Key.")
+        else:
+            st.write("🚩 Invalid API Key!")
+
         with st.expander("Customize prompt:"):
             prompt_string = st.text_area(
                 label="prompt_text",
@@ -326,7 +330,7 @@ with col1:
                 label_visibility="collapsed",
                 height=300,
             )
-        st.form_submit_button(
+        st.button(
             "Add LLM",
             type="primary",
             on_click=validate_and_add_llm,
@@ -335,13 +339,12 @@ with col1:
 
 
 with col2:
-    with st.form("file_upload_form"):
-        st.write("## 2. Upload a file to process")
-        uploaded_file = st.file_uploader(
-            "Upload a paper to process.", type="pdf", accept_multiple_files=False
-        )
-        st.form_submit_button(
-            "Process uploaded paper",
-            on_click=process_paper,
-            kwargs={"uploaded_paper": uploaded_file, "container": col2},
-        )
+    st.write("## 2. Upload a file to process")
+    uploaded_file = st.file_uploader(
+        "Upload a paper to process.", type="pdf", accept_multiple_files=False
+    )
+    st.button(
+        "Process uploaded paper",
+        on_click=process_paper,
+        kwargs={"uploaded_paper": uploaded_file, "container": col2},
+    )
