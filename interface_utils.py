@@ -54,29 +54,8 @@ def infer_image_predictors(doc: Document) -> list[str]:
     ]
 
 
-@st.cache_data
-def get_hf_entity_types(model_name):
-    model_config = AutoConfig.from_pretrained(model_name)
-    # TODO: do not hardcode the label logic!
-    model_types = set(
-        [re.sub("[BIO]-", "", label) for label in model_config.label2id if label != "O"]
-    )
-    return model_types
-
-
-def get_entity_types(model_names):
-    all_entity_types = set()
-    for model_name in model_names:
-        if model_name == "MatIE":
-            all_entity_types.update([e_type for e_type in MAT_IE_TYPES])
-        elif model_name == "GPT-3.5":
-            all_entity_types.update([e_type for e_type in MAT_IE_TYPES])
-        elif model_name == "ChemDataExtractor":
-            all_entity_types.add("CDE_Chemical")
-        else:
-            all_entity_types.update(get_hf_entity_types(model_name))
-
-    return all_entity_types
+def get_entity_types(model_name: str, doc: Document) -> set[str]:
+    return doc.metadata["entity_types"][model_name]
 
 
 def plot_selectable_regions(document, page_number, selectable_layers, exclude_entities=None):

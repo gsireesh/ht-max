@@ -51,7 +51,7 @@ class ImagePredictorABC(BasePredictor, ABC):
 
     @property
     def preferred_layer_name(self) -> str:
-        raise NotImplementedError
+        return f"TAGGED_IMAGE_{self.predictor_identifier}"
 
     def process_image(self, image) -> ImagePredictionResult:
         raise NotImplementedError

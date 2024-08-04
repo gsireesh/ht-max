@@ -48,6 +48,13 @@ class HfTokenClassificationPredictor(TokenClassificationPredictorABC):
     def predictor_identifier(self) -> str:
         return self.model_name
 
+    @property
+    def entity_types(self) -> list[str]:
+        model_types = set(
+            [re.sub("[BIO]-", "", label) for label in self.model.config.label2id if label != "O"]
+        )
+        return list(model_types)
+
     def tag_entities_in_batch(self, batch: list[str]) -> list[list[EntityCharSpan]]:
         tokenized = self.tokenizer(
             batch,

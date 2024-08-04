@@ -11,11 +11,16 @@ from papermage_components.interfaces.token_classification_predictor import (
 
 class ChemDataExtractorPredictor(TokenClassificationPredictorABC):
     def __init__(self, cde_service_url):
+        super().__init__()
         self.cde_service_url = cde_service_url
 
     @property
     def predictor_identifier(self) -> str:
         return "ChemDataExtractor"
+
+    @property
+    def entity_types(self) -> set[str]:
+        return ["CDE_Chemical"]
 
     def tag_entities_in_batch(self, batch: List[str]) -> List[List[EntityCharSpan]]:
         req = requests.post(self.cde_service_url + "/annotate_strings", json=batch, timeout=300)

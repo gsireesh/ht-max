@@ -8,6 +8,7 @@ from papermage.magelib import (
     BlocksFieldName,
     Box,
     Document,
+    Metadata,
     SentencesFieldName,
     TokensFieldName,
     WordsFieldName,
@@ -129,6 +130,11 @@ def process_paper(uploaded_paper, container):
                         predictor = get_hf_tagger(token_predictor)
                         model_entities = predictor.predict(parsed_paper)
                         parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
+                        if "entity_types" not in parsed_paper.metadata:
+                            parsed_paper.metadata["entity_types"] = {}
+                        parsed_paper.metadata["entity_types"][
+                            predictor.predictor_identifier
+                        ] = predictor.entity_types
                     except Exception as e:
                         st.write(e)
                         model_status.update(state="error")
@@ -164,7 +170,6 @@ def process_paper(uploaded_paper, container):
 
 
 def parse_pdf(pdf, _recipe) -> Document:
-
     with st.status("Parsing PDF...") as status:
         try:
             doc = _recipe.pdfplumber_parser.parse(input_pdf_path=pdf)
