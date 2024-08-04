@@ -76,7 +76,7 @@ with st.sidebar:
     for model_name in infer_token_predictors(focus_document):
         show_text_annotations_from[model_name] = st.toggle(model_name, value=True)
         if show_text_annotations_from[model_name]:
-            model_entity_types = get_entity_types([model_name])
+            model_entity_types = get_entity_types(model_name, focus_document)
             model_entity_type_filter[model_name] = st.multiselect(
                 "Entity types to display:",
                 options=model_entity_types,
@@ -93,14 +93,6 @@ entities_column, table_column = st.columns([0.5, 0.5])
 with entities_column:
     st.write("## Tagged Entities")
     all_sections = {e.metadata["section_name"] for e in focus_document.reading_order_sections}
-
-    all_entity_types = get_entity_types(
-        [
-            model_name
-            for model_name in show_text_annotations_from
-            if show_text_annotations_from[model_name]
-        ]
-    )
 
     section_choice = st.multiselect(
         label="Choose sections from which to display entities",

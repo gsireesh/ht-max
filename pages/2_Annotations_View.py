@@ -44,7 +44,7 @@ with st.sidebar:
     for model_name in infer_token_predictors(focus_document):
         show_text_annotations_from[("token", model_name)] = st.toggle(model_name, value=True)
         if show_text_annotations_from[("token", model_name)]:
-            model_entity_types = get_entity_types([model_name])
+            model_entity_types = get_entity_types(model_name, focus_document)
             model_entity_type_filter[model_name] = st.multiselect(
                 "Entity types to display:",
                 options=model_entity_types,
@@ -125,7 +125,7 @@ with sections_column:
                     )
                     spacy_streamlit.visualize_ner(
                         spacy_doc,
-                        labels=get_entity_types([model_name]),
+                        labels=list(get_entity_types(model_name, focus_document)),
                         show_table=False,
                         # displacy_options={"colors": MAT_IE_COLORS},
                         key=f"highlights_{model_name}",
