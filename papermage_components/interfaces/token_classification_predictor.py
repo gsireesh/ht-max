@@ -67,7 +67,7 @@ class TokenClassificationPredictorABC(BasePredictor, ABC):
         return f"TAGGED_ENTITIES_{self.predictor_identifier}"
 
     @property
-    def entity_types(self) -> set[str]:
+    def entity_types(self) -> list[str]:
         raise NotImplementedError
 
     def tag_entities_in_batch(self, batch: list[str]) -> list[list[EntityCharSpan]]:
