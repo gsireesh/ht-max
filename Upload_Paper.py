@@ -21,7 +21,7 @@ import streamlit as st
 from streamlit_extras.st_keyup import st_keyup
 from streamlit_extras.stylable_container import stylable_container
 
-from app_config import default_config as config
+from app_config import app_config as config
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
 from papermage_components.llm_completion_predictor import (
     AVAILABLE_LLMS,
@@ -36,7 +36,6 @@ from local_model_config import AVAILABLE_LOCAL_MODELS
 
 
 st.set_page_config(layout="wide")
-
 
 ## resources
 

@@ -27,4 +27,4 @@ configs = {"docker": docker_config, "sireesh_dev": sireesh_dev_config}
 
 default_config = docker_config
 
-app_config = configs.get(os.environ["CONFIG_NAME"], default_config)
+app_config = configs.get(os.environ.get("CONFIG_NAME"), default_config)
