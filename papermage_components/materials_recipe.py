@@ -59,7 +59,7 @@ from papermage_components.scispacy_sentence_predictor import SciSpacySentencePre
 from papermage_components.matIE_predictor import MatIEPredictor
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
-from papermage_components.table_structure_predictor_mathpix import TableStructurePredictor
+from papermage_components.table_structure_predictor_mathpix import MathPixTableStructurePredictor
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
 
 VILA_LABELS_MAP = {
@@ -99,7 +99,6 @@ class MaterialsRecipe(Recipe):
         matIE_directory: str = "",
         gpu_id: str = "0",
         dpi: int = 300,
-        mathpix_endpoint: str = "https://api.mathpix.com/v3/text",
         mathpix_token: dict = None,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -139,8 +138,8 @@ class MaterialsRecipe(Recipe):
             self.matIE_predictor = None
 
         if mathpix_token is not None:
-            self.table_structure_predictor = TableStructurePredictor(
-                app_url=mathpix_endpoint, mathpix_headers=mathpix_token
+            self.table_structure_predictor = MathPixTableStructurePredictor(
+                mathpix_headers=mathpix_token
             )
         else:
             self.table_structure_predictor = None
