@@ -13,11 +13,12 @@ class ChemDataExtractorPredictor(TokenClassificationPredictorABC):
     def __init__(self, cde_service_url):
         self.cde_service_url = cde_service_url
 
-    def predictor_identifier(self):
+    @property
+    def predictor_identifier(self) -> str:
         return "ChemDataExtractor"
 
     def tag_entities_in_batch(self, batch: List[str]) -> List[List[EntityCharSpan]]:
-        req = requests.post(self.cde_service_url + "/annotate_strings", json=batch)
+        req = requests.post(self.cde_service_url + "/annotate_strings", json=batch, timeout=300)
 
         if req.status_code != 200:
             raise Exception(f"Request returned status code of {req.status_code}!")
