@@ -37,8 +37,12 @@ def annotate_strings(strings: List[str]) -> List[List[EntityCharSpanResponse]]:
     for element in document.elements:
         element_entities = []
         for entity in element.cems:
-            entity = EntityCharSpanResponse(text=entity.text, start_char=entity.start,
-                                            end_char=entity.end_char, entity_type="CDE_Chemical")
+            entity = EntityCharSpanResponse(
+                text=entity.text,
+                start_char=entity.start,
+                end_char=entity.end,
+                entity_type="CDE_Chemical",
+            )
             element_entities.append(entity)
         all_entities.append(element_entities)
     return all_entities
