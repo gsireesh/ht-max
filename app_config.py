@@ -3,6 +3,7 @@ import os
 
 BASE_CONFIG = {
     "uploaded_pdf_path": "data/uploaded_papers",
+    "processed_paper_path": "data/processed_papers",
     "llm_api_keys": {},
     "mathpix_credentials": {
         "app_id": os.environ.get("MATHPIX_APP_ID", ""),

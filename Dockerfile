@@ -16,5 +16,8 @@ RUN python -m spacy download en_core_web_sm
 
 COPY . /app
 RUN rm -rf /app/papermage
+RUN rm -rf data/
+RUN mkdir -p data/uploaded_papers
+RUN mkdir - data/parsed_papers
 
 CMD ["python3", "-m", "streamlit", "run", "Upload_Paper.py",  "--server.headless", "true"]

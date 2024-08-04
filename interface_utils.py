@@ -10,9 +10,10 @@ import streamlit as st
 import spacy
 
 from papermage_components.constants import MAT_IE_TYPES
+from app_config import app_config as config
 
 
-PARSED_PAPER_FOLDER = "data/Midyear_Review_Papers_Parsed"
+PARSED_PAPER_FOLDER = config["processed_pdf_folder"]
 CUSTOM_MODELS_KEY = "custom_models"
 
 
