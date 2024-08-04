@@ -5,6 +5,7 @@ from typing import Callable
 from papermage.predictors import BasePredictor
 from streamlit import cache_resource
 
+from app_config import app_config as config
 from papermage_components.table_transformer_structure_predictor import (
     TableTransformerStructurePredictor,
 )
@@ -27,21 +28,14 @@ def get_table_transformer_predictor():
 
 
 def get_cde_predictor():
-    return ChemDataExtractorPredictor(cde_service_url="http://panther.lti.cs.cmu.edu:8001")
+    return ChemDataExtractorPredictor(cde_service_url=config["chemdataextractor_service_url"])
 
 
 def get_mathpix_predictor():
-    if not (mathpix_api_key := os.environ.get("MATHPIX_API_KEY")) or (
-        mathpix_app_id := os.environ.get("MATHPIX_APP_ID")
-    ):
+    if not config["mathpix_credentials"] or not config["mathpix_credentials"]["app_key"]:
         raise AssertionError("No MathPix API Key provided in config! Skipping predictor.")
 
-    return MathPixTableStructurePredictor(
-        mathpix_headers={
-            "app_key": mathpix_api_key,
-            "app_id": mathpix_app_id,
-        }
-    )
+    return MathPixTableStructurePredictor(mathpix_headers=config["mathpix_credentials"])
 
 
 MODEL_LIST: list[LocalModelInfo] = [

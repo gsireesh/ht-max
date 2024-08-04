@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from io import BytesIO
 import json
 import os
+from typing import Any
 import warnings
 
 from huggingface_hub import HfApi
@@ -19,6 +21,7 @@ import streamlit as st
 from streamlit_extras.st_keyup import st_keyup
 from streamlit_extras.stylable_container import stylable_container
 
+from app_config import default_config as config
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
 from papermage_components.llm_completion_predictor import (
     AVAILABLE_LLMS,
@@ -37,7 +40,7 @@ st.set_page_config(layout="wide")
 
 ## resources
 
-UPLOADED_PDF_PATH = "data/uploaded_papers"
+UPLOADED_PDF_PATH = config["uploaded_pdf_path"]
 
 pagelink_style = """a[data-testid="stPageLink-NavLink"]
 {
@@ -78,7 +81,7 @@ if CUSTOM_MODELS_KEY not in st.session_state:
 def get_recipe():
     recipe = MaterialsRecipe(
         # matIE_directory="/Users/sireeshgururaja/src/MatIE",
-        grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
+        grobid_server_url=config["grobid_url"],
         gpu_id="mps",
         dpi=150,
     )
@@ -90,7 +93,7 @@ def get_hf_tagger(model_name):
     return HfTokenClassificationPredictor(model_name, device="cpu")
 
 
-def validate_and_add_llm(model_name, api_key, prompt_string):
+def validate_and_add_llm(model_name: str, api_key: str, prompt_string: str) -> None:
     llm_predictor = LiteLlmCompletionPredictor(
         model_name=model_name,
         api_key=api_key,
@@ -104,7 +107,7 @@ def validate_and_add_llm(model_name, api_key, prompt_string):
         st.error(validation_result.failure_message)
 
 
-def process_paper(uploaded_paper, container):
+def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
     with container:
         if uploaded_paper is not None:
             bytes_data = uploaded_paper.read()
@@ -194,6 +197,7 @@ def parse_pdf(pdf, _recipe) -> Document:
             doc.annotate_images(images=list(images))
             _recipe.rasterizer.attach_images(images=images, doc=doc)
         except Exception as e:
+            status.update(state="error")
             st.write(e)
 
     with st.status("Predicting words...") as status:
@@ -316,7 +320,9 @@ with col1:
 
     with llm_tab, st.container(border=True):
         model_name = st.selectbox(label="Select model:", options=AVAILABLE_LLMS, index=6)
-        api_key = st_keyup("API Key:", value=os.environ.get("OPENAI_API_KEY", ""), debounce=500)
+        api_key = st_keyup(
+            "API Key:", value=config["llm_api_keys"].get(model_name, ""), debounce=500
+        )
 
         if check_valid_key(model=model_name, api_key=api_key):
             st.write("✅ Valid API Key.")
