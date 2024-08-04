@@ -18,6 +18,6 @@ COPY . /app
 RUN rm -rf /app/papermage
 RUN rm -rf data/
 RUN mkdir -p data/uploaded_papers
-RUN mkdir - data/parsed_papers
+RUN mkdir - data/processed_papers
 
 CMD ["python3", "-m", "streamlit", "run", "Upload_Paper.py",  "--server.headless", "true"]
