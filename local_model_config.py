@@ -7,6 +7,9 @@ from streamlit import cache_resource
 from papermage_components.table_transformer_structure_predictor import (
     TableTransformerStructurePredictor,
 )
+from papermage_components.chem_data_extractor_predictor.chem_data_extractor_predictor import (
+    ChemDataExtractorPredictor,
+)
 
 
 @dataclass
@@ -26,6 +29,11 @@ MODEL_LIST: list[LocalModelInfo] = [
         model_name="Table Transformer Structure Parser",
         model_desc="A model to parse structure from table images.",
         get_model=get_table_transformer_predictor,
+    ),
+    LocalModelInfo(
+        model_name="ChemDataExtractor Token Tagger",
+        model_desc="A model that uses ChemDataExtractor to tag chemicals.",
+        get_model=lambda: ChemDataExtractorPredictor("http://localhost:8000"),
     ),
 ]
 
