@@ -1,0 +1,3 @@
+chemdataextractor2
+fastapi~=0.103.2
+uvicorn[standard]

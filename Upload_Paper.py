@@ -121,7 +121,7 @@ def process_paper(uploaded_paper, container):
                         parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
                     except Exception as e:
                         st.write(e)
-                        model_status.update("error")
+                        model_status.update(state="error")
 
             for token_predictor in st.session_state[CUSTOM_MODELS_KEY].token_predictors:
                 with st.status(f"Running model {token_predictor}") as model_status:
@@ -131,7 +131,7 @@ def process_paper(uploaded_paper, container):
                         parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
                     except Exception as e:
                         st.write(e)
-                        model_status.update("error")
+                        model_status.update(state="error")
 
             for llm_predictor in st.session_state[CUSTOM_MODELS_KEY].llm_predictors:
                 with st.status(f"Generating responses from {llm_predictor.predictor_identifier}"):
@@ -142,7 +142,7 @@ def process_paper(uploaded_paper, container):
                         )
                     except Exception as e:
                         st.write(e)
-                        model_status.update("error")
+                        model_status.update(state="error")
 
             with open(
                 os.path.join(PARSED_PAPER_FOLDER, uploaded_paper.name.replace("pdf", "json")), "w"

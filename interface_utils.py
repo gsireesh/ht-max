@@ -71,6 +71,8 @@ def get_entity_types(model_names):
             all_entity_types.update([e_type for e_type in MAT_IE_TYPES])
         elif model_name == "GPT-3.5":
             all_entity_types.update([e_type for e_type in MAT_IE_TYPES])
+        elif model_name == "ChemDataExtractor":
+            all_entity_types.add("CDE_Chemical")
         else:
             all_entity_types.update(get_hf_entity_types(model_name))
 

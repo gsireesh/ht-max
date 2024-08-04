@@ -6,6 +6,11 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8070"]
 
+  chemdataextractor:
+    build: ./papermage_components/chem_data_extractor_predictor
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/status"]
+
   collage_interface:
     build: .
     ports:
@@ -16,4 +21,5 @@ services:
         target: /app/data/
     depends_on:
       - grobid
+      - chemdataextractor
 
