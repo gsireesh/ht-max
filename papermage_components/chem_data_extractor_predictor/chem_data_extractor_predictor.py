@@ -11,6 +11,7 @@ from papermage_components.interfaces.token_classification_predictor import (
 
 class ChemDataExtractorPredictor(TokenClassificationPredictorABC):
     def __init__(self, cde_service_url):
+        super().__init__()
         self.cde_service_url = cde_service_url
 
     @property

@@ -51,6 +51,9 @@ def map_char_spans_to_entity(sentence: Entity, entities: list[EntityCharSpan]) -
 
 
 class TokenClassificationPredictorABC(BasePredictor, ABC):
+    def __init__(self, entity_to_process="reading_order_sections"):
+        self.entity_to_process = entity_to_process
+
     @property
     def REQUIRED_DOCUMENT_FIELDS(self) -> list[str]:
         return [self.entity_to_process]
