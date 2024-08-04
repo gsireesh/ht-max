@@ -61,6 +61,28 @@ def parse_grobid_coords(
     return boxes
 
 
+def get_all_child_sentence_boxes(element, page_dimensions):
+    sentences = element.findall(".//tei:s[@coords]", NS)
+    element_coords = [e.attrib["coords"] for e in sentences]
+    element_boxes = list(
+        itertools.chain(
+            *[parse_grobid_coords(coord_string, page_dimensions) for coord_string in element_coords]
+        )
+    )
+    return element_boxes
+
+
+def get_abstract_box(root: ET.Element, page_dimensions: dict[int, tuple[float, float]]) -> Box:
+    abstract_tags = root.findall(".//tei:teiHeader/tei:profileDesc/tei:abstract", NS)
+    all_abstract_boxes = []
+
+    for abstract_tag in abstract_tags:
+        all_abstract_boxes.extend(get_all_child_sentence_boxes(abstract_tag, page_dimensions))
+
+    abstract_box = Box.create_enclosing_box(all_abstract_boxes)
+    return abstract_box
+
+
 def get_coords_by_section(
     root: ET.Element, page_dimensions: dict[int, tuple[float, float]]
 ) -> dict[str, list[list[Box]]]:
@@ -78,17 +100,7 @@ def get_coords_by_section(
 
         section_paragraphs = div.findall("./tei:p", NS)
         for paragraph in section_paragraphs:
-            sentence_elements = paragraph.findall(".//tei:s[@coords]", NS)
-
-            paragraph_coordinates = [e.attrib["coords"] for e in sentence_elements]
-            paragraph_boxes = list(
-                itertools.chain(
-                    *[
-                        parse_grobid_coords(coord_string, page_dimensions)
-                        for coord_string in paragraph_coordinates
-                    ]
-                )
-            )
+            paragraph_boxes = get_all_child_sentence_boxes(paragraph, page_dimensions)
             all_coords.append(paragraph_boxes)
 
         coords_by_section[title_text] = all_coords
@@ -211,6 +223,9 @@ class GrobidReadingOrderParser(Parser):
             section: segment_and_consolidate_boxes(section_boxes, section)
             for section, section_boxes in section_to_boxes.items()
         }
+
+        abstract_box = get_abstract_box(xml_root, page_dimensions)
+        consolidated_boxes["abstract"] = [[abstract_box]]
 
         paragraph_entities = []
         for section_number, (section, section_paragraph_boxes) in enumerate(
