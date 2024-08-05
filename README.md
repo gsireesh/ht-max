@@ -1,4 +1,4 @@
-# ht-max
+# Collage
 
 Code for the Collage Tool, a part of the HT-MAX project.
 
@@ -28,7 +28,27 @@ In the root directory of the repo. On our machines, this takes ~20 minutes to co
 because of ChemDataExtractor having to download a number of models. If you do not need 
 ChemDataExtractor, of want to speed uip the build process significantly, comment out the 
 `chemdataextractor` service from `compose.yaml`. This sets up a Docker Compose network with three 
-containers: the interface, an instance of GROBID, to get reading order sections, and 
+containers: the interface, an instance of GROBID, to get reading order sections, and the 
+ChemDataExtractor service.
+
+Alternatively, you can run the interface and Grobid separately. To build the interface docker 
+image, run from the repo root:
+
+```commandline
+docker build -t collage_interface .
+```
+
+And run the Grobid image with the command from 
+[their documentation](https://grobid.readthedocs.io/en/stable/Run-Grobid/):
+```commandline
+docker run --rm --gpus all --init --ulimit core=0 -p 8070:8070 grobid/grobid:0.8.0
+```
+(note that this command requires `nvidia-docker`. Grobid runs fine without it, you can just 
+remove `--gpus all` from the command.)
+
+
+To configure the application, modify config in `app_config.py` - this allows you to specify the 
+Grobid and ChemDataExtractor URLs, API keys for either LLM services or MathPix
 
 ## What's in this repo?
 
@@ -48,14 +68,107 @@ package.
 ### Extending Collage by implementing interfaces
 
 This repo contains the interfaces discussed above, along with several implementations of those
-repositories. These implementations provide the blueprint for how to implement the interfaces in a 
+repositories. These implementations provide the blueprint for how to implemen,t the interfaces in a 
 number of different ways, including in-memory implementations right in the pipeline, small, 
 Dockerized services for components with complicated environment requirements that may not be 
 compatible with Collage, as well as a few that use external APIs. We outline these components,
-and how they implement their interface below.
+and how they implement their interface below. Note that because Collage is a prototyping tool, 
+it does not aim for efficiency: all models are run on CPU. At the level of one paper, which is what
+the interface allows, the pipeline takes around a minute to annotate a paper. 
 
-[TK]
+Each interface requires users to specify the following:
+- `predictor_identifier`: A property method that returns a readable identifier for the predictor,
+  to be displayed in the visual interface. This is typically the name of the underlying model 
+  used to do the tagging.
+- `entity_to_process`: a parameter in the superclass constructor that specifies the PaperMage 
+  `Entity` to annotate. This corresponds to whatever semantic segmentation comes from the 
+  pipeline - it can be sections in reading order, tables, paragraphs, etc. 
 
+Finally, for a new implementation to be visualized in the frontend, it must be registered in 
+`local_model_config.py`, by adding a new `LocalModelInfo` object to the `MODEL_LIST` object, 
+which contains a model name, a description, and a function that takes no parameters that returns 
+an instance of the predictor. New parameters to be passed to predictor constructors should be 
+declared in `app_config.py`
+
+
+#### **Token Classification Interface** - `TokenClassificationPredictorABC`:
+
+This interface is intended for any model that produces annotations of spans in text, i.e. most 
+"classical" NER or event extraction models. Users are required to override the following methods:
+
+
+- `tag_entities_in_batch`: This method takes a list of sentences, and for each produces a list 
+  of tagged entities, wrapped in the `EntityCharSpan` dataclass. In the default implementation, 
+  this batch is composed of the sentences in each paragraph. Implementors can also optionally 
+  override the `generate_batches` method for more efficient batching. 
+
+Current implementations:
+- `HfTokenClassificationPredictor`: this wraps any HuggingFace model that follows the 
+  `TokenClassification` interface and allows it to be used in Collage. This model is run inside 
+  the same container as Collage, and therefore needs to be compatible with the version of 
+  `transformers` in the environment.
+- `ChemDataExtractorPredictor`: this predictor wraps around 
+  [`ChemDataExtractorv2`](http://www.chemdataextractor2.org/). Because ChemDataExtractorv2 
+  requires Python<3.8, we spin the annotation part of this into a small FastAPI wrapper, which 
+  we then Dockerize with Python3.7. The predictor calls the API to annotate documents. 
+
+#### **Text Prediction Interface** - `TextGenerationPredictorABC`:
+Given the prominence of large language model-based approaches, this interface is designed to 
+allow for text-to-text prediction. This interface can be extended by:
+
+- overriding the `generate_from_entity_text` method (required): this method allows the user to 
+  specify a text-to-text function that applies the method of their choice.
+- overriding the `postprocess_to_dict` method (optional): This method allows users to 
+  postprocess the results of the above method into a dict that can be displayed as a table. This 
+  method is to allow for LLM results in structured format to be aggregated and displayed in the 
+  Summary view. 
+
+Current implementation:
+
+- `LiteLLMCompletionPredictor`: this predictor allows for prompting and receiving results from 
+  multiple LLMs via API. We configure it to allow users to query OpenAI an Anthropic LLMs, and 
+  additionally allow users to bring their own API key to try the demo. Entered API keys are only 
+  stored in the streamlit session state, and are lost when the user disconnects.
+
+#### **Image Prediction Interface** - `ImagePredictorABC`:
+
+ Given the focus on tables and charts that many of our interview participants discussed, and the 
+ fact that table parsing is an active research area, we additionally provide an interface for 
+ models that parse images, the `ImagePredictorABC` in order to handle multimodal 
+ processing, including tables. Predictors that implement this interface return an output in the 
+ form of an `ImagePredictionResult`, a union type that allows users to return any combination of 
+ a raw prediction string, a dict that represents a table, a list of bounding boxes, or a 
+ predicted string. All of these representations, if present, are rendered in the frontend view.
+ 
+This interface allows users two options of method to override: 
+
+- `process_image`: for predictors that only need access to the image, e.g. for captioning, or 
+  predictors that do their own OCR, users can implement just the `process_image` method.
+- `process_entity`: for predictors that need access to more features of PaperMage's multimodal 
+  representation, users can implemnent the `process_entity` method, which passes in each entity 
+  of the layer. Users can then access that entity's image, text, etc. 
+
+Current Implementations:
+- `TableTransformerStructurePredictor`: This predictor uses the Microsoft Table transformer to 
+  predict bounding boxes, and then intersects those bounding boxes with PaperMage `Token`s to 
+  get a parsed table representation. It overrides `process_entity`, and returns a set of predicted 
+  cell bounding boxes, as well as a parsed table representation.
+- `MathPixTableStructurePredictor`: This predictor calls the commercial 
+  [MathPix](https://mathpix.com) API to parse the content of tables. It overrides the  
+  `process_image` method, and returns only a parsed table representation. NOTE: because it 
+  requires an API key, the MathPix predictor is disabled in the running web interface. To test 
+  it out, get your own MathPix API key, and enter the credentials in `app_config.py`
+
+### Other implemented components:
+
+- `GrobidReadingOrderParser`: this parser uses [GROBID](https://github.com/kermitt2/grobid) to 
+  parse documents into a semantic representation based on document structure. This allows us to 
+  e.g. filter predictions by their source section, or segment batches based on section and 
+  paragraph.
+- `SciSpacySentencePredictor`: a reimplementation of the original PaperMage sentence parsed 
+  based on PySBD to use SciSpacy instead. This results in better sentence boundary prediction in 
+  the case of e.g. compounds, which contain periods in their names and cause general-domain 
+  sentence segmenters to fail.
 
 ### Scripts
 
