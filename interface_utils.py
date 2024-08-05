@@ -17,6 +17,37 @@ PARSED_PAPER_FOLDER = config["processed_paper_path"]
 CUSTOM_MODELS_KEY = "custom_models"
 
 
+EXPECTED_PARSE_LAYERS = [
+    "symbols",
+    "images",
+    "metadata",
+    "tokens",
+    "rows",
+    "pages",
+    "reading_order_sections",
+    "words",
+    "sentences",
+    "blocks",
+    "vila_entities",
+    "titles",
+    "paragraphs",
+    "authors",
+    "abstracts",
+    "keywords",
+    "sections",
+    "lists",
+    "bibliographies",
+    "equations",
+    "algorithms",
+    "figures",
+    "tables",
+    "captions",
+    "headers",
+    "footers",
+    "footnotes",
+]
+
+
 class EntityColorMapper:
     def __init__(self):
         self.color_list = [

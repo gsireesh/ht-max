@@ -224,8 +224,8 @@ class GrobidReadingOrderParser(Parser):
             for section, section_boxes in section_to_boxes.items()
         }
 
-        abstract_box = get_abstract_box(xml_root, page_dimensions)
-        consolidated_boxes["Abstract"] = [[abstract_box]]
+        # abstract_box = get_abstract_box(xml_root, page_dimensions)
+        # consolidated_boxes["Abstract"] = [[abstract_box]]
 
         paragraph_entities = []
         for section_number, (section, section_paragraph_boxes) in enumerate(
