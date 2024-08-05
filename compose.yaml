@@ -6,11 +6,11 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8070"]
 
-#  chemdataextractor:
-#    image: gsireesh/cmu-collage-chemdataextractor
-#    build: ./papermage_components/chem_data_extractor_predictor
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:8000/status"]
+  chemdataextractor:
+    image: gsireesh/cmu-collage-chemdataextractor
+    build: ./papermage_components/chem_data_extractor_predictor
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/status"]
 
   collage_interface:
     image: gsireesh/cmu-collage
@@ -25,5 +25,5 @@ services:
         target: /app/data/
     depends_on:
       - grobid
-#      - chemdataextractor
+      - chemdataextractor
 
