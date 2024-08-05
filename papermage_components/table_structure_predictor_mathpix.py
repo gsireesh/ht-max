@@ -1,20 +1,12 @@
-from typing import List
-import io
-import torch
-from torchvision import transforms
-from transformers import TableTransformerForObjectDetection
-
-from papermage import Box, Document, Entity, TablesFieldName
-from papermage.predictors import BasePredictor
-from papermage_components.interfaces.image_predictor import ImagePredictionResult, ImagePredictorABC
-from papermage_components.utils import get_table_image, get_text_in_box, globalize_bbox_coordinates
-
-import requests
 import base64
-import json
 import csv
-from collections import defaultdict
-from PIL import Image
+import io
+
+import pandas as pd
+import requests
+
+from papermage import TablesFieldName
+from papermage_components.interfaces.image_predictor import ImagePredictionResult, ImagePredictorABC
 
 
 MATHPIX_ENDPOINT = "https://api.mathpix.com/v3/text"
@@ -80,14 +72,9 @@ def parse_tsv(tsv_string):
 
 # Function to convert parsed table to JSON
 def convert_mathpix_to_json(tsv_string, latex_input):
-    headers, rows = parse_tsv(tsv_string)
-    merged_dict = defaultdict(list)
-    for row in rows:
-        for header, value in zip(headers, row):
-            merged_dict[header].append(value)
-    full_table = {}
-    full_table["table_dict"] = dict(merged_dict)
-    return full_table
+    table_df = pd.read_csv(io.StringIO(tsv_string))
+    table_dict = table_df.to_dict()
+    return table_dict
 
 
 class MathPixTableStructurePredictor(ImagePredictorABC):
@@ -116,7 +103,7 @@ class MathPixTableStructurePredictor(ImagePredictorABC):
             json_data = convert_mathpix_to_json(tsv_data, latex_data)
 
             table_data = ImagePredictionResult(
-                raw_prediction=tsv_data,
+                raw_prediction=latex_data,
                 predicted_dict=json_data,
             )
 

@@ -144,10 +144,8 @@ with table_column:
                 if not entity.metadata[display_format]:
                     continue
                 with st.container(border=True):
-                    if display_format == "raw_predictions" and entity.metadata.get(
-                        "raw_predictions"
-                    ):
-                        st.write(entity.metadata["raw_predictions"])
+                    if display_format == "raw_prediction" and entity.metadata.get("raw_prediction"):
+                        st.write(entity.metadata["raw_prediction"])
                     elif display_format == "predicted_dict" and entity.metadata.get(
                         "predicted_dict"
                     ):
@@ -162,7 +160,7 @@ with table_column:
                             False,
                         )
                         st.write(table_visualized)
-
+                    st.write(f"**Predicted by:** {model_name}")
                     st.write(f"**Location**: Page {entity.boxes[0].page}")
                     if caption := entity.metadata.get("predicted_caption"):
                         st.write(f"**Best guess caption:** {caption}")
