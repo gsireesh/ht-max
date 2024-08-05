@@ -106,7 +106,7 @@ def shrink_box(box, w_shrink_factor, h_shrink_factor):
     width_diff = box.w - new_width
     height_diff = box.h - new_height
 
-    return Box(box.l + width_diff / 2, box.t + height_diff / 2, new_width, new_height, box.page)
+    return Box(box.l + (width_diff / 2), box.t + (height_diff / 2), new_width, new_height, box.page)
 
 
 def convert_table_mapping_to_boxes_and_text(
@@ -120,7 +120,6 @@ def convert_table_mapping_to_boxes_and_text(
     all_cell_boxes = []
 
     for header_cell, row_cells in header_to_column_mapping:
-
         table_box = table_entity.boxes[0]
         header_box = shrink_box(header_cell, w_shrink, h_shrink)
         header_box.page = table_entity.boxes[0].page
@@ -141,7 +140,7 @@ def convert_table_mapping_to_boxes_and_text(
 
 
 class TableTransformerStructurePredictor(ImagePredictorABC):
-    def __init__(self, model, device, w_shrink=0.81, h_shrink=0.72):
+    def __init__(self, model, device, w_shrink=0.95, h_shrink=0.8):
         super().__init__(TablesFieldName)
         self.model = model.to(device)
         self.w_shrink = w_shrink

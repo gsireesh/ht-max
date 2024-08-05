@@ -31,7 +31,7 @@ from papermage_components.llm_completion_predictor import (
     check_valid_key,
 )
 from papermage_components.materials_recipe import MaterialsRecipe, VILA_LABELS_MAP
-from interface_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER
+from interface_utils import CUSTOM_MODELS_KEY, PARSED_PAPER_FOLDER, EXPECTED_PARSE_LAYERS
 from local_model_config import AVAILABLE_LOCAL_MODELS
 
 
@@ -173,6 +173,25 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
 
 
 def parse_pdf(pdf, _recipe) -> Document:
+    parsed_doc_filename = os.path.join(
+        PARSED_PAPER_FOLDER, os.path.basename(pdf.replace("pdf", "json"))
+    )
+    st.write(parsed_doc_filename)
+    if os.path.exists(parsed_doc_filename):
+        with st.status("Paper has already been parsed! Using cached version...") as status:
+            try:
+                with open(parsed_doc_filename) as f:
+                    doc = Document.from_json(json.load(f))
+                    for layer in doc.layers:
+                        if layer not in EXPECTED_PARSE_LAYERS:
+                            doc.remove_layer(layer)
+                    return doc
+            except Exception as e:
+                status.update(
+                    state="error",
+                    label="Failed to parse cached version. Parsing from scratch.",
+                )
+
     with st.status("Parsing PDF...") as status:
         try:
             doc = _recipe.pdfplumber_parser.parse(input_pdf_path=pdf)
