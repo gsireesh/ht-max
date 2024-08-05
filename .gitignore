@@ -164,4 +164,5 @@ cython_debug/
 .DS_Store
 
 *.pdf
-data/**.json
+data/**/*.json
+*log.txt
