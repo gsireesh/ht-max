@@ -123,6 +123,13 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                         predictor = AVAILABLE_LOCAL_MODELS[local_predictor].get_model()
                         model_entities = predictor.predict(parsed_paper)
                         parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
+
+                        if getattr(predictor, "entity_types"):
+                            if "entity_types" not in parsed_paper.metadata:
+                                parsed_paper.metadata["entity_types"] = {}
+                            parsed_paper.metadata["entity_types"][
+                                predictor.predictor_identifier
+                            ] = predictor.entity_types
                     except Exception as e:
                         st.write(e)
                         model_status.update(state="error")
