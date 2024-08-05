@@ -124,7 +124,7 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                         model_entities = predictor.predict(parsed_paper)
                         parsed_paper.annotate_layer(predictor.preferred_layer_name, model_entities)
 
-                        if getattr(predictor, "entity_types"):
+                        if getattr(predictor, "entity_types", None):
                             if "entity_types" not in parsed_paper.metadata:
                                 parsed_paper.metadata["entity_types"] = {}
                             parsed_paper.metadata["entity_types"][
