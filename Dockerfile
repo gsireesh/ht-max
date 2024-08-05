@@ -1,8 +1,6 @@
-FROM python:3.10-bullseye
+FROM python:3.10-bullseye AS build
 
 RUN pip install --upgrade pip
-RUN apt-get update && apt-get install -y poppler-utils
-
 RUN mkdir /app
 WORKDIR /app
 
@@ -14,10 +12,17 @@ RUN pip install -r requirements.txt
 
 RUN python -m spacy download en_core_web_sm
 
+FROM python:3.10-slim-bullseye AS final
+
+RUN apt-get update && apt-get install -y poppler-utils
+RUN pip install --upgrade pip
+
+COPY --from=build /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+
 COPY . /app
 RUN rm -rf /app/papermage
 RUN rm -rf data/
 RUN mkdir -p data/uploaded_papers
 RUN mkdir - data/processed_papers
 
-CMD ["python3", "-m", "streamlit", "run", "Upload_Paper.py",  "--server.headless", "true"]
+CMD ["python", "-m", "streamlit", "run", "Upload_Paper.py",  "--server.headless", "true"]
