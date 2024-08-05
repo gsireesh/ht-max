@@ -20,7 +20,7 @@ RUN pip install --upgrade pip
 COPY --from=build /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
 COPY . /app
-RUN rm -rf /app/papermage
+WORKDIR /app
 RUN rm -rf data/
 RUN mkdir -p data/uploaded_papers
 RUN mkdir - data/processed_papers
