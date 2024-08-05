@@ -53,7 +53,6 @@ class EntityColorMapper:
         return color_map
 
 
-@st.cache_resource
 def load_document(doc_filename):
     with open(os.path.join(PARSED_PAPER_FOLDER, doc_filename)) as f:
         document = Document.from_json(json.load(f))
