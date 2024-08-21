@@ -55,10 +55,14 @@ from papermage.rasterizers.rasterizer import PDF2ImageRasterizer
 from papermage.recipes.recipe import Recipe
 from papermage.utils.annotate import group_by
 
+from papermage_components.chem_data_extractor_predictor import ChemDataExtractorPredictor
 from papermage_components.scispacy_sentence_predictor import SciSpacySentencePredictor
 from papermage_components.matIE_predictor import MatIEPredictor
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
+from papermage_components.table_transformer_structure_predictor import (
+    TableTransformerStructurePredictor,
+)
 from papermage_components.table_structure_predictor_mathpix import MathPixTableStructurePredictor
 from papermage_components.hf_token_classification_predictor import HfTokenClassificationPredictor
 
@@ -100,6 +104,7 @@ class MaterialsRecipe(Recipe):
         gpu_id: str = "0",
         dpi: int = 300,
         mathpix_token: dict = None,
+        chemdataextractor_url=None,
     ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.dpi = dpi
@@ -137,12 +142,21 @@ class MaterialsRecipe(Recipe):
         else:
             self.matIE_predictor = None
 
+        self.table_transformer_structure_predictor = (
+            TableTransformerStructurePredictor.from_model_name()
+        )
+
         if mathpix_token is not None:
-            self.table_structure_predictor = MathPixTableStructurePredictor(
+            self.mathpix_structure_predictor = MathPixTableStructurePredictor(
                 mathpix_headers=mathpix_token
             )
         else:
-            self.table_structure_predictor = None
+            self.mathpix_structure_predictor = None
+
+        if chemdataextractor_url is not None:
+            self.cde_predictor = ChemDataExtractorPredictor(chemdataextractor_url)
+        else:
+            self.cde_predictor = None
 
         self.logger.info("Finished instantiating _recipe")
 
@@ -179,6 +193,11 @@ class MaterialsRecipe(Recipe):
                 name=self.matIE_predictor.preferred_layer_name, entities=matIE_entities
             )
 
+        if self.cde_predictor is not None:
+            self.logger.info("Predicting ChemDataExtractor Entities")
+            cde_entities = self.cde_predictor.predict(doc=doc)
+            doc.annotate_layer(self.cde_predictor.preferred_layer_name, entities=cde_entities)
+
         self.logger.info("Predicting blocks...")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -205,9 +224,16 @@ class MaterialsRecipe(Recipe):
         )
         doc.annotate(*preds)
 
-        if self.table_structure_predictor is not None:
-            self.logger.info("Predicting table structure")
-            self.table_structure_predictor.get_table(doc)
+        self.logger.info("Predicting table structure - Table Transformer")
+        table_transformer_entities = self.table_transformer_structure_predictor.predict(doc)
+        doc.annotate_layer(
+            self.table_transformer_structure_predictor.preferred_layer_name,
+            table_transformer_entities,
+        )
+
+        if self.mathpix_structure_predictor is not None:
+            self.logger.info("Predicting table structure - MathPix")
+            self.mathpix_structure_predictor.get_table(doc)
 
         return doc
 

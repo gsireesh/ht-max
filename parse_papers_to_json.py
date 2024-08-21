@@ -24,6 +24,7 @@ def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_pre
     recipe = MaterialsRecipe(
         matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
+        chemdataextractor_url="http://windhoek.sp.cs.cmu.edu:8002",
     )
 
     pdf_list = [
