@@ -40,26 +40,6 @@ def get_processed_images(doc, model_name):
     layer = getattr(doc, f"TAGGED_IMAGE_{model_name}")
     return layer.entities
 
-
-def get_tables(doc, filter_string):
-    tables_to_return = []
-    for table in doc.tables:
-        table_dict = table.metadata["table_dict"]
-        filter_match = any([filter_string in header for header in table_dict])
-
-        caption_id = table.metadata.get("caption_id")
-        caption = focus_document.captions[caption_id].text if caption_id else ""
-        if caption:
-            substring_idx = caption.lower().index("table") if "table" in caption.lower() else 0
-            caption = caption[substring_idx:]
-
-        filter_match = filter_match or filter_string in caption.lower()
-        if not table_dict or not filter_match:
-            continue
-        tables_to_return.append(table)
-    return tables_to_return
-
-
 with st.sidebar:
     st.write("Select a parsed file whose results to display")
     focus_file = st.session_state.get("focus_document")

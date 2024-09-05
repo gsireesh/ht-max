@@ -156,7 +156,7 @@ with sections_column:
                                 predicted_text = text_entity.metadata["predicted_text"]
                                 st.write(predicted_text)
 
-    # table by id
+    # entity by id
     elif isinstance(section_name, int):
         table = focus_document.tables[section_name]
         st.write("### Table, with model annotations:")
