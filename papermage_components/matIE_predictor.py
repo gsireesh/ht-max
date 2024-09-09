@@ -60,10 +60,9 @@ def get_offset_map(in_text, out_text):
             # we shouldn't need to do anything here, as long as we only care about matching out to in.
             pass
         elif tag == "replace":
-
             for i, j in zip(range(i1, i2), range(j1, j2)):
                 offsets[i] = None
-
+    offsets[len(out_text)] = len(in_text)
     # offsets = {v: k for k, v in offsets.items()}
     return offsets
 
@@ -72,18 +71,14 @@ def fix_entity_offsets(entities, offset_map, para_offset):
     updated_entities = []
     for entity in entities:
         start_offset_file = offset_map[entity.start]
-        # try:
-        #     end_offset_file = offset_map[entity.end]
-        # except KeyError as e:
-        #     print(start, end)
-        #     raise e
+        end_offset_file = offset_map[entity.end]
 
         updated_entities.append(
             MatIEEntity(
                 entity.id,
                 entity.entity_type,
                 start_offset_file + para_offset,
-                start_offset_file + len(entity.entity_string) + para_offset,
+                end_offset_file,  # start_offset_file + len(entity.entity_string) + para_offset,
                 entity.entity_string,
             )
         )
@@ -136,7 +131,6 @@ class MatIEPredictor(BasePredictor):
         return [SentencesFieldName, TokensFieldName]
 
     def _predict(self, doc: Document) -> List[Entity]:
-
         print("Creating temporary input files")
 
         doc_temp_folder = TemporaryDirectory(
@@ -218,7 +212,6 @@ class MatIEPredictor(BasePredictor):
             )
 
     def process_files_multiprocess(self, input_folder, output_folder):
-
         env_vars = os.environ.copy()
         env_vars["MODEL_DIR"] = self.NER_model_dir
         env_vars["VOCAB_DIR"] = self.vocab_dir
