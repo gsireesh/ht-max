@@ -1,7 +1,7 @@
+from datetime import datetime
 import json
 import logging
 import os
-import sys
 
 import fire
 from tqdm.auto import tqdm
@@ -21,6 +21,7 @@ def get_doc_title(document: Document):
 
 
 def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_present: bool = False):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     recipe = MaterialsRecipe(
         matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
@@ -47,10 +48,13 @@ def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_pre
                 json.dump(parsed_paper.to_json(), f, indent=4)
         except Exception as e:
             logging.error(f"Failed to parse paper {pdf_filename}", exc_info=True)
-            failed_files.append({"filename": pdf_filename, "error_class": str(e)})
-
-    with open("data/failed_files.json", "w") as f:
-        json.dump(failed_files, f)
+            failed_files.append(
+                {"filename": pdf_filename, "exception_type": type(e), "error_message": str(e)}
+            )
+    with open(f"data/failed_files_{timestamp}.json", "w") as f:
+        json.dump(
+            {"input_folder": input_folder, "files": pdf_list, "errors": failed_files}, f, indent=4
+        )
 
 
 if __name__ == "__main__":
