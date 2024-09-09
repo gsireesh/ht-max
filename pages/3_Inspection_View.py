@@ -14,7 +14,7 @@ from papermage_components.constants import (
 )
 from papermage_components.utils import (
     visualize_highlights,
-    get_table_image,
+    get_table_images,
 )
 from interface_utils import *
 
@@ -105,8 +105,9 @@ with inspection_column:
         with st.container(border=True):
             st.write("### Entity Images")
             for entity in focus_entities:
-                entity_image = get_table_image(entity, focus_document)
-                st.image(entity_image)
+                entity_images = get_table_images(entity, focus_document)
+                for entity_image in entity_images:
+                    st.image(entity_image)
         with st.container(border=True):
             st.write("### Entity Text")
             show_sentences = st.toggle("Split into sentences")

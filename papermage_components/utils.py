@@ -153,21 +153,28 @@ def visualize_tagged_entities(paragraph_entity, spacy_pipeline, model_name, allo
 
 
 def get_table_image(table_entity: Entity, doc: Document, page_image=None, expand_box_by=0.01):
-    if len(table_entity.boxes) > 1:
-        raise AssertionError("Table has more than one box!!")
-    box = table_entity.boxes[0]
-    if page_image is None:
-        page_image = doc.pages[box.page].images[0].pilimage
-    page_w, page_h = page_image.size
-    table_image = page_image.crop(
-        (
-            (box.l - expand_box_by) * page_w,
-            (box.t - expand_box_by) * page_h,
-            (box.l + box.w) * page_w,
-            (box.t + box.h) * page_h,
+    table_images = get_table_images(table_entity, doc, page_image, expand_box_by)
+    if len(table_images) != 1:
+        raise AssertionError("Entity has more than one box!")
+    return table_images[0]
+
+
+def get_table_images(table_entity: Entity, doc: Document, page_image=None, expand_box_by=0.01):
+    table_images = []
+    for box in table_entity.boxes:
+        if page_image is None:
+            page_image = doc.pages[box.page].images[0].pilimage
+        page_w, page_h = page_image.size
+        table_image = page_image.crop(
+            (
+                (box.l - expand_box_by) * page_w,
+                (box.t - expand_box_by) * page_h,
+                (box.l + box.w) * page_w,
+                (box.t + box.h) * page_h,
+            )
         )
-    )
-    return table_image
+        table_images.append(table_image)
+    return table_images
 
 
 def visualize_table_with_boxes(table, boxes, doc, include_tokens):
