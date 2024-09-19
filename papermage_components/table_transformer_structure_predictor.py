@@ -140,7 +140,7 @@ def convert_table_mapping_to_boxes_and_text(
 
 
 class TableTransformerStructurePredictor(ImagePredictorABC):
-    def __init__(self, model, device, w_shrink=0.95, h_shrink=0.8):
+    def __init__(self, model, device, w_shrink=0.95, h_shrink=0.5):
         super().__init__(TablesFieldName)
         self.model = model.to(device)
         self.w_shrink = w_shrink
@@ -177,7 +177,7 @@ class TableTransformerStructurePredictor(ImagePredictorABC):
 
     def process_entity(self, table_entity: Entity) -> ImagePredictionResult:
         doc = table_entity.layer.doc
-        table_image = get_table_image(table_entity, doc)
+        table_image = get_table_image(table_entity, doc, expand_box_by=0)
         header_to_column_mapping = self.get_table_structure(table_image)
 
         table_boxes, table_dict = convert_table_mapping_to_boxes_and_text(
