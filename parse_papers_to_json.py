@@ -25,7 +25,7 @@ def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_pre
     recipe = MaterialsRecipe(
         matIE_directory="/Users/sireeshgururaja/src/MatIE",
         grobid_server_url="http://windhoek.sp.cs.cmu.edu:8070",
-        chemdataextractor_url="http://windhoek.sp.cs.cmu.edu:8002",
+        # chemdataextractor_url="http://windhoek.sp.cs.cmu.edu:8002",
     )
 
     pdf_list = [
@@ -49,7 +49,7 @@ def parse_papers_to_json(input_folder: str, output_folder: str, overwrite_if_pre
         except Exception as e:
             logging.error(f"Failed to parse paper {pdf_filename}", exc_info=True)
             failed_files.append(
-                {"filename": pdf_filename, "exception_type": type(e), "error_message": str(e)}
+                {"filename": pdf_filename, "exception_type": str(type(e)), "error_message": str(e)}
             )
     with open(f"data/failed_files_{timestamp}.json", "w") as f:
         json.dump(
