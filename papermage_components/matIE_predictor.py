@@ -18,6 +18,8 @@ from papermage.magelib import (
 from papermage.predictors import BasePredictor
 from papermage.utils.annotate import group_by
 
+from papermage_components.constants import MAT_IE_TYPES
+
 NER_MODEL_RELATIVE_PATH = "model"
 VOCAB_RELATIVE_PATH = "vpack_mat"
 DECODE_SCRIPT_RELATIVE_PATH = "decode.sh"
@@ -130,6 +132,10 @@ class MatIEPredictor(BasePredictor):
     @property
     def REQUIRED_DOCUMENT_FIELDS(self) -> List[str]:
         return [SentencesFieldName, TokensFieldName]
+
+    @property
+    def entity_types(self):
+        return MAT_IE_TYPES
 
     def _predict(self, doc: Document) -> List[Entity]:
         print("Creating temporary input files")

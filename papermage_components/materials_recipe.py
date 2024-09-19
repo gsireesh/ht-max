@@ -192,6 +192,11 @@ class MaterialsRecipe(Recipe):
             doc.annotate_layer(
                 name=self.matIE_predictor.preferred_layer_name, entities=matIE_entities
             )
+            if "entity_types" not in doc.metadata:
+                doc.metadata["entity_types"] = {}
+            doc.metadata["entity_types"][
+                self.matIE_predictor.predictor_identifier
+            ] = self.matIE_predictor.entity_types
 
         if self.cde_predictor is not None:
             self.logger.info("Predicting ChemDataExtractor Entities")
