@@ -78,7 +78,8 @@ def fix_entity_offsets(entities, offset_map, para_offset):
                 entity.id,
                 entity.entity_type,
                 start_offset_file + para_offset,
-                end_offset_file,  # start_offset_file + len(entity.entity_string) + para_offset,
+                end_offset_file + para_offset,  # start_offset_file + len(entity.entity_string) +
+                # para_offset,
                 entity.entity_string,
             )
         )
