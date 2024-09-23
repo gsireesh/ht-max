@@ -137,6 +137,10 @@ class MatIEPredictor(BasePredictor):
     def entity_types(self):
         return MAT_IE_TYPES
 
+    @property
+    def predictor_identifier(self):
+        return "MatIE"
+
     def _predict(self, doc: Document) -> List[Entity]:
         print("Creating temporary input files")
 
