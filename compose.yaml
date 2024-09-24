@@ -3,6 +3,8 @@ name: collage
 services:
   grobid:
     image: grobid/grobid:0.8.0
+    ports:
+      - "8070:8070"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8070"]
 
