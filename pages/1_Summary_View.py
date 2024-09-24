@@ -3,6 +3,12 @@ from streamlit.column_config import TextColumn
 
 from interface_utils import *
 from interface_utils import get_entity_types, infer_token_predictors
+from papermage_components.matie_heuristics import (
+    get_most_common_materials,
+    create_document_graph,
+    get_property_table,
+    get_synthesis_method_table,
+)
 from papermage_components.utils import visualize_table_with_boxes
 
 st.set_page_config(layout="wide")
@@ -40,6 +46,7 @@ def get_processed_images(doc, model_name):
     layer = getattr(doc, f"TAGGED_IMAGE_{model_name}")
     return layer.entities
 
+
 with st.sidebar:
     st.write("Select a parsed file whose results to display")
     focus_file = st.session_state.get("focus_document")
@@ -71,37 +78,57 @@ with st.sidebar:
 
 entities_column, table_column = st.columns([0.5, 0.5])
 with entities_column:
-    st.write("## Tagged Entities")
-    all_sections = {e.metadata["section_name"] for e in focus_document.reading_order_sections}
+    existing_tab, heuristics_tab = st.tabs(["Entity Overview", "Material Heuristics"])
+    with existing_tab:
+        st.write("## Tagged Entities")
+        all_sections = {e.metadata["section_name"] for e in focus_document.reading_order_sections}
 
-    section_choice = st.multiselect(
-        label="Choose sections from which to display entities",
-        options=all_sections,
-        default=all_sections,
-    )
+        section_choice = st.multiselect(
+            label="Choose sections from which to display entities",
+            options=all_sections,
+            default=all_sections,
+        )
 
-    entities = []
-    for predictor_name, show in show_text_annotations_from.items():
-        if show:
-            entities = entities + get_tagged_entities(
-                focus_document,
-                predictor_name,
-                allowed_sections=section_choice,
-                allowed_types=model_entity_type_filter[predictor_name],
-            )
+        entities = []
+        for predictor_name, show in show_text_annotations_from.items():
+            if show:
+                entities = entities + get_tagged_entities(
+                    focus_document,
+                    predictor_name,
+                    allowed_sections=section_choice,
+                    allowed_types=model_entity_type_filter[predictor_name],
+                )
 
-    st.write(f"Found {len(entities)} entities:")
-    st.dataframe(
-        pd.DataFrame(entities),
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "sentence_context": TextColumn(label="Sentence Context", width="large"),
-            "entity_type": TextColumn("Entity Type", width=None),
-            "entity_text": TextColumn("Text", width=None),
-            "entity_section": TextColumn("Section", width=None),
-        },
-    )
+        st.write(f"Found {len(entities)} entities:")
+        st.dataframe(
+            pd.DataFrame(entities),
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "sentence_context": TextColumn(label="Sentence Context", width="large"),
+                "entity_type": TextColumn("Entity Type", width=None),
+                "entity_text": TextColumn("Text", width=None),
+                "entity_section": TextColumn("Section", width=None),
+            },
+        )
+
+    with heuristics_tab:
+        doc_graph = create_document_graph(focus_document, str(focus_document.symbols[:50]))
+
+        st.write("## Most common materials")
+        most_frequent_materials = get_most_common_materials(focus_document.TAGGED_ENTITIES_MatIE)
+        cols = st.columns(len(most_frequent_materials))
+        for i, ((material, count), col) in enumerate(zip(most_frequent_materials, cols)):
+            st.metric(f"#{i + 1}", material, f"{count} mentions")
+
+        st.write("Discovered Property Table")
+        property_table = get_property_table(doc_graph)
+        st.dataframe(property_table)
+
+        st.write("Discovered Synthesis Table")
+        synthesis_table = get_synthesis_method_table(doc_graph)
+        st.dataframe(synthesis_table)
+
 
 with table_column:
     st.write("## Processed Images")
