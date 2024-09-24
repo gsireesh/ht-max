@@ -125,7 +125,7 @@ with entities_column:
         compositions_table = get_composition_table(focus_document.TAGGED_ENTITIES_MatIE)
         if not compositions_table.empty:
             st.write("## Discovered Compositions")
-            st.dataframe(compositions_table)
+            st.dataframe(compositions_table.style.background_gradient(cmap="Blues", axis=None))
 
         st.write("## Discovered Properties")
         property_table = get_property_table(doc_graph)
