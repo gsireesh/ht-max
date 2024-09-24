@@ -5,6 +5,7 @@ from interface_utils import *
 from interface_utils import get_entity_types, infer_token_predictors
 from papermage_components.matie_heuristics import (
     get_most_common_materials,
+    get_composition_table,
     create_document_graph,
     get_property_table,
     get_synthesis_method_table,
@@ -121,11 +122,16 @@ with entities_column:
         for i, ((material, count), col) in enumerate(zip(most_frequent_materials, cols)):
             st.metric(f"#{i + 1}", material, f"{count} mentions")
 
-        st.write("Discovered Property Table")
+        compositions_table = get_composition_table(focus_document.TAGGED_ENTITIES_MatIE)
+        if not compositions_table.empty:
+            st.write("## Discovered Compositions")
+            st.dataframe(compositions_table)
+
+        st.write("## Discovered Properties")
         property_table = get_property_table(doc_graph)
         st.dataframe(property_table)
 
-        st.write("Discovered Synthesis Table")
+        st.write("## Discovered Synthesis Methods")
         synthesis_table = get_synthesis_method_table(doc_graph)
         st.dataframe(synthesis_table)
 

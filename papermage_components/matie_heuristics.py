@@ -1,15 +1,16 @@
-import itertools
-import json
 from collections import Counter
+import re
 
-from matplotlib import pyplot as plt
+from mendeleev import element
 import networkx as nx
 import pandas as pd
 from papermage import Document, Span
 import streamlit as st
 
-from papermage_components.constants import MAT_IE_COLORS
-from papermage_components.matIE_predictor import MatIEPredictor
+composed_alloy_re = re.compile(
+    "(\(?(((?P<alloy_component>[A-Z][a-z]?) (?P<fraction>0\.\d+)+?) ?)+)(\) ?[CBNO])?"
+)
+fraction_re = re.compile("(?P<element>[A-Z][a-z]?)+ (?P<fraction>\d\.\d+)")
 
 
 def normalize_entity_string(entity_string: str):
@@ -25,6 +26,33 @@ def get_most_common_materials(matie_entities, n=3):
     ]
     counter = Counter(material_strings)
     return counter.most_common(n)
+
+
+def get_composition_table(matie_entities, n=3):
+    material_strings = [
+        normalize_entity_string(e.text)
+        for e in matie_entities
+        if e.metadata["entity_type"] == "Material"
+    ]
+
+    composition_dict = {}
+    i = 0
+    for ms in material_strings:
+        i + 1
+        if i >= n:
+            break
+        if not composed_alloy_re.match(ms):
+            continue
+        i += 1
+        composition_dict[ms] = {}
+        for match in fraction_re.finditer(ms):
+            composition_dict[ms][match.group("element")] = match.group("fraction")
+
+    composition_df = pd.DataFrame(composition_dict).T
+    composition_df = composition_df.reindex(
+        sorted(composition_df.columns, key=lambda x: element(x).atomic_number), axis=1
+    )
+    return composition_df.fillna(0)
 
 
 @st.cache_data
