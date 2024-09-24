@@ -46,7 +46,7 @@ def get_composition_table(matie_entities, n=3):
         i += 1
         composition_dict[ms] = {}
         for match in fraction_re.finditer(ms):
-            composition_dict[ms][match.group("element")] = match.group("fraction")
+            composition_dict[ms][match.group("element")] = float(match.group("fraction"))
 
     composition_df = pd.DataFrame(composition_dict).T
     composition_df = composition_df.reindex(
