@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from io import BytesIO
 import json
 import os
+import subprocess
 from typing import Any
 import warnings
 
@@ -137,6 +138,9 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                         doc.metadata["entity_types"][
                             recipe.matIE_predictor.predictor_identifier
                         ] = recipe.matIE_predictor.entity_types
+                    except subprocess.CalledProcessError as e:
+                        st.write("MatIE failed to run the delegate process.")
+                        st.write(f"Error code {e.returncode}; stderr: {e.stderr}")
                     except Exception as e:
                         st.write(e)
                         model_status.update(state="error")

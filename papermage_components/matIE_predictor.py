@@ -233,10 +233,13 @@ class MatIEPredictor(BasePredictor):
         env_vars["EXTRA_ARGS"] = ""
 
         subprocess.run(["chmod", "+x", self.decode_script], check=True)
-        subprocess.run(
-            self.decode_script,
-            shell=True,
-            env=env_vars,
-            cwd=self.matIE_directory,
-            check=True,
-        )
+        try:
+            output = subprocess.check_output(
+                self.decode_script,
+                stderr=subprocess.STDOUT,
+                shell=True,
+                env=env_vars,
+                cwd=self.matIE_directory,
+            )
+        except subprocess.CalledProcessError as e:
+            print("Status : FAIL", e.returncode, e.output)
