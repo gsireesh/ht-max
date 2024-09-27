@@ -117,6 +117,24 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
 
             parsed_paper = parse_pdf(paper_filename, recipe)
 
+            if recipe.matIE_predictor is not None:
+                with st.status("Running MatIE Annotation...") as model_status:
+                    try:
+                        doc = parsed_paper
+                        matIE_entities = recipe.matIE_predictor.predict(doc=doc)
+                        doc.annotate_layer(
+                            name=recipe.matIE_predictor.preferred_layer_name,
+                            entities=matIE_entities,
+                        )
+                        if "entity_types" not in doc.metadata:
+                            doc.metadata["entity_types"] = {}
+                        doc.metadata["entity_types"][
+                            recipe.matIE_predictor.predictor_identifier
+                        ] = recipe.matIE_predictor.entity_types
+                    except Exception as e:
+                        st.write(e)
+                        model_status.update(status="error")
+
             for local_predictor in st.session_state[CUSTOM_MODELS_KEY].local_predictors:
                 with st.status(f"Running model {local_predictor}") as model_status:
                     try:
