@@ -20,6 +20,7 @@ class LocalModelInfo:
     model_name: str
     model_desc: str
     get_model: Callable[[], BasePredictor]
+    use_by_default: bool
 
 
 @cache_resource
@@ -43,16 +44,19 @@ MODEL_LIST: list[LocalModelInfo] = [
         model_name="Table Transformer Structure Parser",
         model_desc="A model to parse structure from table images.",
         get_model=get_table_transformer_predictor,
+        use_by_default=True,
     ),
     LocalModelInfo(
         model_name="MathPix Table Structure Transformer",
         model_desc="Parse tables with MathPix",
         get_model=get_mathpix_predictor,
+        use_by_default=False,
     ),
     LocalModelInfo(
         model_name="ChemDataExtractor Token Tagger",
         model_desc="A model that uses ChemDataExtractor to tag chemicals.",
         get_model=get_cde_predictor,
+        use_by_default=False,
     ),
 ]
 

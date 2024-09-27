@@ -115,7 +115,13 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                 f.write(bytes_data)
             recipe = get_recipe()
 
-            parsed_paper = parse_pdf(paper_filename, recipe)
+            try:
+                parsed_paper = parse_pdf(paper_filename, recipe)
+            except Exception as e:
+                st.error(
+                    "Your paper failed to parse. Please contact the developers,"
+                    " or try a different paper."
+                )
 
             if recipe.matIE_predictor is not None:
                 with st.status("Running MatIE Annotation...") as model_status:
@@ -133,7 +139,7 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                         ] = recipe.matIE_predictor.entity_types
                     except Exception as e:
                         st.write(e)
-                        model_status.update(status="error")
+                        model_status.update(state="error")
 
             for local_predictor in st.session_state[CUSTOM_MODELS_KEY].local_predictors:
                 with st.status(f"Running model {local_predictor}") as model_status:
@@ -216,6 +222,7 @@ def parse_pdf(pdf, _recipe) -> Document:
                     state="error",
                     label="Failed to parse cached version. Parsing from scratch.",
                 )
+                raise e
 
     with st.status("Parsing PDF...") as status:
         try:
@@ -223,6 +230,7 @@ def parse_pdf(pdf, _recipe) -> Document:
         except Exception as e:
             status.update(state="error")
             st.write(e)
+            raise e
 
     with st.status("Getting sections in reading order...") as status:
         try:
@@ -233,6 +241,7 @@ def parse_pdf(pdf, _recipe) -> Document:
         except Exception as e:
             status.update(state="error")
             st.write(e)
+            raise e
 
     with st.status("Rasterizing Document...") as status:
         try:
@@ -242,6 +251,7 @@ def parse_pdf(pdf, _recipe) -> Document:
         except Exception as e:
             status.update(state="error")
             st.write(e)
+            raise e
 
     with st.status("Predicting words...") as status:
         try:
@@ -250,6 +260,7 @@ def parse_pdf(pdf, _recipe) -> Document:
         except Exception as e:
             status.update(state="error")
             st.write(e)
+            raise e
 
     with st.status("Predicting sentences...") as status:
         try:
@@ -258,6 +269,7 @@ def parse_pdf(pdf, _recipe) -> Document:
         except Exception as e:
             status.update(state="error")
             st.write(e)
+            raise e
 
     with st.status("Predicting blocks...") as status:
         try:
@@ -268,6 +280,7 @@ def parse_pdf(pdf, _recipe) -> Document:
         except Exception as e:
             status.update(state="error")
             st.write(e)
+            raise e
 
     with st.status("Predicting vila...") as status:
         try:
@@ -291,6 +304,7 @@ def parse_pdf(pdf, _recipe) -> Document:
         except Exception as e:
             status.update(state="error")
             st.write(e)
+            raise e
 
     return doc
 
@@ -311,7 +325,7 @@ with col1:
     with st.status("Available custom models:", expanded=True):
         for model_info in AVAILABLE_LOCAL_MODELS.values():
             model_name = model_info.model_name
-            use_model = st.checkbox(model_name)
+            use_model = st.checkbox(model_name, value=model_info.use_by_default)
             if use_model:
                 st.session_state[CUSTOM_MODELS_KEY].local_predictors.add(model_name)
             else:
