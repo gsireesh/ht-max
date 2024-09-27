@@ -29,7 +29,12 @@ def get_tagged_entities(doc, model_name, allowed_sections, allowed_types):
         for entity in getattr(section, f"TAGGED_ENTITIES_{model_name}", []):
             if entity.metadata["entity_type"] not in allowed_types:
                 continue
-            sentence_context = entity.sentences[0].text
+            sentences = entity.sentences
+            if sentences:
+                sentence_context = sentences[0].text
+            else:
+                sentence_context = "Not found."
+
             all_entities.append(
                 {
                     "entity_type": entity.metadata["entity_type"],
