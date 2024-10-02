@@ -25,5 +25,6 @@ scispacy~=0.5.4
 en-core-sci-md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz
 opencv-python-headless
 mendeleev~=0.17.0
+anthropic==0.34.1
 # this is installed separately, bc it's brittle and causes the breakage of other packages.
 # papermage[dev,predictors,visualizers]  @ git+https://github.com/gsireesh/papermage.git@ad_hoc_fixes
