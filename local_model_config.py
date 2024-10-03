@@ -13,6 +13,7 @@ from papermage_components.chem_data_extractor_predictor import (
     ChemDataExtractorPredictor,
 )
 from papermage_components.table_structure_predictor_mathpix import MathPixTableStructurePredictor
+from papermage_components.table_structure_predictor_claude import ClaudeTableStructurePredictor
 
 
 @dataclass
@@ -39,6 +40,14 @@ def get_mathpix_predictor():
     return MathPixTableStructurePredictor(mathpix_headers=config["mathpix_credentials"])
 
 
+def get_claude_predictor():
+    if not config["claude_api_key"]:
+        raise AssertionError("No Claude API Key provided in config! Skipping predictor.")
+    
+    return ClaudeTableStructurePredictor(claude_model="default",api_key=config["claude_api_key"])
+    
+
+
 MODEL_LIST: list[LocalModelInfo] = [
     LocalModelInfo(
         model_name="Table Transformer Structure Parser",
@@ -58,6 +67,12 @@ MODEL_LIST: list[LocalModelInfo] = [
         get_model=get_cde_predictor,
         use_by_default=False,
     ),
+    LocalModelInfo(
+        model_name="Claude Table Structure Predictor",
+        model_desc="A model that uses Claude api to parse structure from table images",
+        get_model=get_claude_predictor,
+        use_by_default=False,
+    )
 ]
 
 AVAILABLE_LOCAL_MODELS = {m.model_name: m for m in MODEL_LIST}

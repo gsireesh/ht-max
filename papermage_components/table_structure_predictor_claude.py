@@ -1,6 +1,5 @@
 # import sys
 # import os
-# sys.path.append(os.path.abspath('/Users/harryzhang/Documents/CMU/MSE_NLP/Code/htmax/papermage_components'))
 import pandas as pd
 from papermage import TablesFieldName
 from papermage_components.interfaces.image_predictor import ImagePredictionResult, ImagePredictorABC
@@ -15,12 +14,14 @@ import numpy as np
 
 
 class ClaudeTableStructurePredictor(ImagePredictorABC):
-    def __init__(self,claude_model):
+    def __init__(self,claude_model,api_key):
         super().__init__(entity_to_process=TablesFieldName, find_caption=True)
-        if claude_model is None:
+        if claude_model == "default":
             self.claude_model = "claude-3-opus-20240229"
         else:
             self.claude_model = claude_model
+        
+        self.api_key = api_key
         
         self.raw_table_data = None
         self.json_table_data = None
@@ -73,7 +74,7 @@ class ClaudeTableStructurePredictor(ImagePredictorABC):
 
     def get_raw_table_data_from_images(self, image) -> None: #image: PIL.Image.Image
         
-        client = anthropic.Anthropic()
+        client = anthropic.Anthropic(api_key=self.api_key)
 
         # Resize the image if it's too large
         max_size = (1600, 1600)  # Adjust these dimensions as needed

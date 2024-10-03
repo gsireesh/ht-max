@@ -9,6 +9,7 @@ BASE_CONFIG = {
         "app_id": os.environ.get("MATHPIX_APP_ID", ""),
         "app_key": os.environ.get("MATHPIX_APP_KEY", ""),
     },
+    "claude_api_key": os.environ.get("ANTHROPIC_API_KEY","")
 }
 
 
