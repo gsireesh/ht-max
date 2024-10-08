@@ -152,13 +152,13 @@ def convert_table_mapping_to_boxes_and_text(
         header_text = get_text_in_box(globalize_box_coordinates(header_box, table_box, doc), doc)
 
         table_text_repr[header_text] = []
-        for a_cell in row_cells:
-            cell_box = shrink_box(a_cell, w_shrink, h_shrink)
-            cell_box.page = table_entity.boxes[0].page
-            all_cell_boxes.append(cell_box)
-            table_text_repr[header_text].append(
-                get_text_in_box(globalize_box_coordinates(cell_box, table_box, doc), doc)
-            )
+        # for a_cell in row_cells:
+        #     cell_box = shrink_box(a_cell, w_shrink, h_shrink)
+        #     cell_box.page = table_entity.boxes[0].page
+        #     all_cell_boxes.append(cell_box)
+        #     table_text_repr[header_text].append(
+        #         get_text_in_box(globalize_box_coordinates(cell_box, table_box, doc), doc)
+        #     )
 
     return all_cell_boxes, table_text_repr
 
