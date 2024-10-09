@@ -24,8 +24,14 @@ def get_spans_from_boxes(doc: Document, boxes: list[Box]):
 def get_span_by_box(box, doc) -> Optional[Span]:
     overlapping_tokens = doc.intersect_by_box(Entity(boxes=[box]), "tokens")
     token_spans = []
+    current_ID = None
     for token in overlapping_tokens:
-        token_spans.extend(token.spans)
+        if current_ID is None:
+            current_ID = token.id
+            token_spans.extend(token.spans)
+        elif abs(current_ID - token.id) == 1:
+            current_ID = token.id
+            token_spans.extend(token.spans)
     if token_spans:
         return Span.create_enclosing_span(token_spans)
     else:
