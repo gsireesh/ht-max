@@ -38,36 +38,12 @@ def box_cxcywh_to_cornerwh(x: torch.Tensor) -> torch.Tensor:
     return torch.stack(b, dim=1)
 
 
-def convert_tensor_to_cornerwh(b: torch.Tensor, image_size) -> torch.Tensor:
-    img_w, img_h = image_size
-    b_lt = b[:, :2] / torch.tensor([img_w, img_h])
-    b_wh = (b[:, 2:] - b[:, :2]) / torch.tensor([img_w, img_h])
-    return torch.concat((b_lt, b_wh), dim=-1)
-
-
-# for output bounding box post-processing
-def box_cxcywh_to_xyxy(x):
-    x_c, y_c, w, h = x.unbind(-1)
-    b = [(x_c - 0.5 * w), (y_c - 0.5 * h), (x_c + 0.5 * w), (y_c + 0.5 * h)]
-    return torch.stack(b, dim=1)
-
-
-def rescale_bboxes(out_bbox, size):
-    img_w, img_h = size
-    b = box_cxcywh_to_xyxy(out_bbox)
-    b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
-    b = convert_tensor_to_cornerwh(b, size)
-    return b
-
-
-def format_model_output(
-    outputs: TatrOutput, id2label: dict[int, str], image_size: tuple[float, float]
-) -> list[TatrPrediction]:
+def format_model_output(outputs: TatrOutput, id2label: dict[int, str]) -> list[TatrPrediction]:
     m = outputs.logits.softmax(-1).max(-1)
     pred_labels = list(m.indices.detach().cpu().numpy())[0]
     pred_scores = list(m.values.detach().cpu().numpy())[0]
     pred_bboxes = outputs["pred_boxes"].detach().cpu()[0]
-    pred_bboxes = [elem.tolist() for elem in rescale_bboxes(pred_bboxes, image_size)]
+    pred_bboxes = [elem.tolist() for elem in box_cxcywh_to_cornerwh(pred_bboxes)]
 
     cell_info = []
     for label, score, bbox in zip(pred_labels, pred_scores, pred_bboxes):
@@ -179,7 +155,7 @@ class TableTransformerStructurePredictor(ImagePredictorABC):
             outputs = self.model(pixel_values)
         structure_id2label = self.model.config.id2label
         structure_id2label[len(structure_id2label)] = "no object"
-        predictions = format_model_output(outputs, structure_id2label, table_image.size)
+        predictions = format_model_output(outputs, structure_id2label)
         header_column_mapping = get_header_column_cell_mapping(predictions)
 
         return header_column_mapping
