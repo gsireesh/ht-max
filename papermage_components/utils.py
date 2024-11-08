@@ -185,7 +185,7 @@ def get_table_images(table_entity: Entity, doc: Document, page_image=None, expan
 
 def visualize_table_with_boxes(table, boxes, doc, include_tokens):
     table_box = table.boxes[0]
-    table_boxes = [Box.from_json(b) for b in boxes]
+    table_boxes = [b for b in boxes]
     vis_entity = plot_entities_on_page(
         doc.pages[table_box.page].images[0],
         entities=[Entity(boxes=table_boxes)],
