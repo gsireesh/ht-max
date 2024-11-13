@@ -1,3 +1,5 @@
+# Adapted from https://github.com/microsoft/table-transformer/blob/main/src/postprocess.py
+
 from collections import defaultdict
 
 from fitz import Rect

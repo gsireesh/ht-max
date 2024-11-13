@@ -10,6 +10,8 @@ from papermage.visualizers import plot_entities_on_page
 
 from papermage_components.constants import MAT_IE_TYPES
 
+from papermage_components.table_transformer_postprocessing import *
+
 
 def get_spans_from_boxes(doc: Document, boxes: list[Box]):
     intersecting_tokens = doc.intersect_by_box(query=Entity(boxes=boxes), name="tokens")
@@ -185,7 +187,7 @@ def get_table_images(table_entity: Entity, doc: Document, page_image=None, expan
 
 def visualize_table_with_boxes(table, boxes, doc, include_tokens):
     table_box = table.boxes[0]
-    table_boxes = [b for b in boxes]
+    table_boxes = [Box.from_json(b) for b in boxes]
     vis_entity = plot_entities_on_page(
         doc.pages[table_box.page].images[0],
         entities=[Entity(boxes=table_boxes)],
