@@ -48,10 +48,6 @@ def construct_document_payload(doc: Document) -> dict[str, str]:
     return input_paragraphs
 
 
-def parse_matie_service_results(results: dict) -> tuple:
-    return tuple()
-
-
 class MatIEServicePredictor(BasePredictor):
     def __init__(
         self,
