@@ -14,6 +14,11 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/status"]
 
+  matie:
+    image: gsireesh/cmu-collage-matie
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/status"]
+
   collage_interface:
     image: gsireesh/cmu-collage
     build: .
@@ -28,4 +33,5 @@ services:
     depends_on:
       - grobid
       - chemdataextractor
+      - matie
 

@@ -16,12 +16,14 @@ docker_config = {
     **BASE_CONFIG,
     "grobid_url": "http://collage-grobid-1:8070",
     "chemdataextractor_service_url": "http://collage-chemdataextractor-1:8000",
+    "matie_service_url": "http://collage-matie-1:8000",
 }
 
 sireesh_dev_config = {
     **BASE_CONFIG,
     "grobid_url": "http://windhoek.sp.cs.cmu.edu:8070",
     "chemdataextractor_service_url": "http://windhoek.sp.cs.cmu.edu:8001",
+    "matie_service_url": "http://windhoek.sp.cs.cmu.edu:8003",
 }
 
 configs = {"docker": docker_config, "sireesh_dev": sireesh_dev_config}
