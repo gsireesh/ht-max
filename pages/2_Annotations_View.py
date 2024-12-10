@@ -1,6 +1,5 @@
 import pandas as pd
 import spacy_streamlit
-from streamlit_dimensions import st_dimensions
 from streamlit_image_coordinates import streamlit_image_coordinates
 
 
@@ -207,20 +206,14 @@ with doc_vis_column:
             focus_page,
             selectable_layers=["reading_order_sections", TablesFieldName],
         )
-    page_width, page_height = highlighted_image.pilimage.size
-    ratio = page_height / page_width
-
-    image_width = st_dimensions(key="doc_vis")["width"]
-
-    image_height = image_width * ratio
 
     image_coords = streamlit_image_coordinates(
-        highlighted_image.pilimage, key="annotation_page_image", width=image_width
+        highlighted_image.pilimage, key="annotation_page_image", use_column_width="always"
     )
 
     if image_coords is not None:
-        x = image_coords["x"] / image_width
-        y = image_coords["y"] / image_height
+        x = image_coords["x"] / image_coords["width"]
+        y = image_coords["y"] / image_coords["height"]
 
         click_sections = focus_document.find(
             Box(x - BOX_PADDING / 2, y - BOX_PADDING / 2, BOX_PADDING, BOX_PADDING, focus_page),
