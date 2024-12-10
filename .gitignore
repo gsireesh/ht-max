@@ -165,4 +165,5 @@ cython_debug/
 
 *.pdf
 data/**/*.json
+data/processed_papers
 *log.txt
