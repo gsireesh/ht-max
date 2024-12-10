@@ -181,7 +181,12 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                         f.write(paper_json)
                 except Exception as e:
                     st.write(e)
-                    write_status.update(state="error")
+                    write_status.update(
+                        state="error",
+                        label="Processed file failed to serialize. Try again, or contact the devs.",
+                    )
+
+                    return
 
             st.session_state["focus_document"] = uploaded_paper.name.replace("pdf", "json")
             st.write(
