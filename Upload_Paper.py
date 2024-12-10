@@ -123,6 +123,7 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                     "Your paper failed to parse. Please contact the developers,"
                     " or try a different paper."
                 )
+                return
 
             for local_predictor in st.session_state[CUSTOM_MODELS_KEY].local_predictors:
                 with st.status(f"Running model {local_predictor}") as model_status:
@@ -169,17 +170,23 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
 
             with st.status("Finishing up...") as write_status:
                 try:
-                    paper_json = parsed_paper.to_json()
+                    paper_dict = parsed_paper.to_json()
+                    paper_json = json.dumps(paper_dict, indent=4)
                     with open(
                         os.path.join(
                             PARSED_PAPER_FOLDER, uploaded_paper.name.replace("pdf", "json")
                         ),
                         "w",
                     ) as f:
-                        json.dump(paper_json, f, indent=4)
+                        f.write(paper_json)
                 except Exception as e:
                     st.write(e)
-                    write_status.update(state="error")
+                    write_status.update(
+                        state="error",
+                        label="Processed file failed to serialize. Try again, or contact the devs.",
+                    )
+
+                    return
 
             st.session_state["focus_document"] = uploaded_paper.name.replace("pdf", "json")
             st.write(
@@ -199,7 +206,6 @@ def parse_pdf(pdf, _recipe) -> Document:
     parsed_doc_filename = os.path.join(
         PARSED_PAPER_FOLDER, os.path.basename(pdf.replace("pdf", "json"))
     )
-    st.write(parsed_doc_filename)
     if os.path.exists(parsed_doc_filename):
         with st.status("Paper has already been parsed! Using cached version...") as status:
             try:

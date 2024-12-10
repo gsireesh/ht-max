@@ -1,22 +1,11 @@
-import pandas as pd
-import spacy_streamlit
-from streamlit_dimensions import st_dimensions
 from streamlit_image_coordinates import streamlit_image_coordinates
 
-from papermage import Box, Entity
-from papermage.visualizers import plot_entities_on_page
-
-from papermage_components.constants import (
-    HIGHLIGHT_COLORS,
-    HIGHLIGHT_TYPES,
-    MAT_IE_COLORS,
-    MAT_IE_TYPES,
-)
+from interface_utils import *
+from papermage import Box
 from papermage_components.utils import (
-    visualize_highlights,
     get_table_images,
 )
-from interface_utils import *
+
 
 st.set_page_config(layout="wide")
 
@@ -45,7 +34,7 @@ with st.sidebar:  # .form("File selector"):
     file_selector = st.selectbox(
         "Parsed file",
         options=file_options,
-        index=file_options.index(focus_file) if focus_file else 0,
+        index=file_options.index(focus_file) if focus_file and focus_file in file_options else 0,
     )
     st.session_state["focus_document"] = file_selector
     focus_document = load_document(file_selector)
@@ -82,19 +71,13 @@ with doc_vis_column:
             focus_document, focus_page, selectable_layers=[focus_layer]
         )
 
-    page_width, page_height = highlighted_image.pilimage.size
-    ratio = page_height / page_width
-
-    image_width = st_dimensions(key="doc_vis")["width"]
-    image_height = image_width * ratio
-
     image_coords = streamlit_image_coordinates(
-        highlighted_image.pilimage, key="annotation_page_image", width=image_width
+        highlighted_image.pilimage, key="annotation_page_image", use_column_width="always"
     )
 
     if image_coords is not None:
-        x = image_coords["x"] / image_width
-        y = image_coords["y"] / image_height
+        x = image_coords["x"] / image_coords["width"]
+        y = image_coords["y"] / image_coords["height"]
 
         st.session_state["clicked_coordinates"] = (x, y, focus_page)
 

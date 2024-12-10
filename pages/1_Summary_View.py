@@ -59,7 +59,7 @@ with st.sidebar:
     file_selector = st.selectbox(
         "Parsed file",
         options=file_options,
-        index=file_options.index(focus_file) if focus_file else 0,
+        index=file_options.index(focus_file) if focus_file and focus_file in file_options else 0,
     )
     st.session_state["focus_document"] = file_selector
     focus_document = load_document(file_selector)
@@ -119,26 +119,34 @@ with entities_column:
         )
 
     with heuristics_tab:
-        doc_graph = create_document_graph(focus_document, str(focus_document.symbols[:50]))
+        if getattr(focus_document, "TAGGED_ENTITIES_MatIE"):
+            doc_graph = create_document_graph(focus_document, str(focus_document.symbols[:50]))
 
-        st.write("## Most common materials")
-        most_frequent_materials = get_most_common_materials(focus_document.TAGGED_ENTITIES_MatIE)
-        cols = st.columns(len(most_frequent_materials))
-        for i, ((material, count), col) in enumerate(zip(most_frequent_materials, cols)):
-            st.metric(f"#{i + 1}", material, f"{count} mentions")
+            st.write("## Most common materials")
+            most_frequent_materials = get_most_common_materials(
+                focus_document.TAGGED_ENTITIES_MatIE
+            )
+            cols = st.columns(len(most_frequent_materials))
+            for i, ((material, count), col) in enumerate(zip(most_frequent_materials, cols)):
+                st.metric(f"#{i + 1}", material, f"{count} mentions")
 
-        compositions_table = get_composition_table(focus_document.TAGGED_ENTITIES_MatIE)
-        if not compositions_table.empty:
-            st.write("## Discovered Compositions")
-            st.dataframe(compositions_table.style.background_gradient(cmap="Blues", axis=None))
+            compositions_table = get_composition_table(focus_document.TAGGED_ENTITIES_MatIE)
+            if not compositions_table.empty:
+                st.write("## Discovered Compositions")
+                st.dataframe(compositions_table.style.background_gradient(cmap="Blues", axis=None))
 
-        st.write("## Discovered Properties")
-        property_table = get_property_table(doc_graph)
-        st.dataframe(property_table)
+            st.write("## Discovered Properties")
+            property_table = get_property_table(doc_graph)
+            st.dataframe(property_table)
 
-        st.write("## Discovered Synthesis Methods")
-        synthesis_table = get_synthesis_method_table(doc_graph)
-        st.dataframe(synthesis_table)
+            st.write("## Discovered Synthesis Methods")
+            synthesis_table = get_synthesis_method_table(doc_graph)
+            st.dataframe(synthesis_table)
+        else:
+            st.write(
+                "MatIE has not been run on this paper. Please run MatIE to get materials "
+                "heuristics."
+            )
 
 
 with table_column:
