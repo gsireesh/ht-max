@@ -37,7 +37,7 @@ with st.sidebar:
     file_selector = st.selectbox(
         "Parsed file",
         options=file_options,
-        index=file_options.index(focus_file) if focus_file else 0,
+        index=file_options.index(focus_file) if focus_file and focus_file in file_options else 0,
     )
     st.session_state["focus_document"] = file_selector
     focus_document = load_document(file_selector)
