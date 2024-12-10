@@ -124,27 +124,6 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                     " or try a different paper."
                 )
 
-            if recipe.matIE_predictor is not None:
-                with st.status("Running MatIE Annotation...") as model_status:
-                    try:
-                        doc = parsed_paper
-                        matIE_entities = recipe.matIE_predictor.predict(doc=doc)
-                        doc.annotate_layer(
-                            name=recipe.matIE_predictor.preferred_layer_name,
-                            entities=matIE_entities,
-                        )
-                        if "entity_types" not in doc.metadata:
-                            doc.metadata["entity_types"] = {}
-                        doc.metadata["entity_types"][
-                            recipe.matIE_predictor.predictor_identifier
-                        ] = recipe.matIE_predictor.entity_types
-                    except subprocess.CalledProcessError as e:
-                        st.write("MatIE failed to run the delegate process.")
-                        st.write(f"Error code {e.returncode}; stderr: {e.stderr}")
-                    except Exception as e:
-                        st.write(e)
-                        model_status.update(state="error")
-
             for local_predictor in st.session_state[CUSTOM_MODELS_KEY].local_predictors:
                 with st.status(f"Running model {local_predictor}") as model_status:
                     try:
@@ -188,10 +167,19 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                         st.write(e)
                         model_status.update(state="error")
 
-            with open(
-                os.path.join(PARSED_PAPER_FOLDER, uploaded_paper.name.replace("pdf", "json")), "w"
-            ) as f:
-                json.dump(parsed_paper.to_json(), f, indent=4)
+            with st.status("Finishing up...") as write_status:
+                try:
+                    paper_json = parsed_paper.to_json()
+                    with open(
+                        os.path.join(
+                            PARSED_PAPER_FOLDER, uploaded_paper.name.replace("pdf", "json")
+                        ),
+                        "w",
+                    ) as f:
+                        json.dump(paper_json, f, indent=4)
+                except Exception as e:
+                    st.write(e)
+                    write_status.update(state="error")
 
             st.session_state["focus_document"] = uploaded_paper.name.replace("pdf", "json")
             st.write(

@@ -58,6 +58,7 @@ from papermage.utils.annotate import group_by
 from papermage_components.chem_data_extractor_predictor import ChemDataExtractorPredictor
 from papermage_components.scispacy_sentence_predictor import SciSpacySentencePredictor
 from papermage_components.matIE_predictor import MatIEPredictor
+from papermage_components.matie_service_predictor import MatIEServicePredictor
 from papermage_components.reading_order_parser import GrobidReadingOrderParser
 from papermage_components.highlightParser import FitzHighlightParser
 from papermage_components.table_transformer_structure_predictor import (
@@ -101,6 +102,7 @@ class MaterialsRecipe(Recipe):
         grobid_server_url: str = "",
         xml_out_dir: str = "data/grobid_xml",
         matIE_directory: str = "",
+        matie_url: str = "",
         gpu_id: str = "0",
         dpi: int = 300,
         mathpix_token: dict = None,
@@ -134,7 +136,9 @@ class MaterialsRecipe(Recipe):
             model_name=scispacy_model,
         )
 
-        if matIE_directory:
+        if matie_url:
+            self.matIE_predictor = MatIEServicePredictor(matie_url)
+        elif matIE_directory:
             self.matIE_predictor = MatIEPredictor(
                 matIE_directory=matIE_directory,
                 gpu_id=gpu_id,

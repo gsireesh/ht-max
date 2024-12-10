@@ -6,6 +6,7 @@ from papermage.predictors import BasePredictor
 from streamlit import cache_resource
 
 from app_config import app_config as config
+from papermage_components.matie_service_predictor import MatIEServicePredictor
 from papermage_components.table_transformer_structure_predictor import (
     TableTransformerStructurePredictor,
 )
@@ -30,6 +31,10 @@ def get_table_transformer_predictor():
 
 def get_cde_predictor():
     return ChemDataExtractorPredictor(cde_service_url=config["chemdataextractor_service_url"])
+
+
+def get_matie_predictor():
+    return MatIEServicePredictor(matIE_service_url=config["matie_service_url"])
 
 
 def get_mathpix_predictor():
@@ -57,6 +62,12 @@ MODEL_LIST: list[LocalModelInfo] = [
         model_desc="A model that uses ChemDataExtractor to tag chemicals.",
         get_model=get_cde_predictor,
         use_by_default=False,
+    ),
+    LocalModelInfo(
+        model_name="MatIE Information Extractor",
+        model_desc="A model that tags material properties and relations.",
+        get_model=get_matie_predictor,
+        use_by_default=True,
     ),
 ]
 
