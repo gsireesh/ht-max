@@ -170,14 +170,15 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
 
             with st.status("Finishing up...") as write_status:
                 try:
-                    paper_json = parsed_paper.to_json()
+                    paper_dict = parsed_paper.to_json()
+                    paper_json = json.dumps(paper_dict, indent=4)
                     with open(
                         os.path.join(
                             PARSED_PAPER_FOLDER, uploaded_paper.name.replace("pdf", "json")
                         ),
                         "w",
                     ) as f:
-                        json.dump(paper_json, f, indent=4)
+                        f.write(paper_json)
                 except Exception as e:
                     st.write(e)
                     write_status.update(state="error")
