@@ -123,6 +123,7 @@ def process_paper(uploaded_paper: BytesIO, container: Any) -> None:
                     "Your paper failed to parse. Please contact the developers,"
                     " or try a different paper."
                 )
+                return
 
             for local_predictor in st.session_state[CUSTOM_MODELS_KEY].local_predictors:
                 with st.status(f"Running model {local_predictor}") as model_status:
