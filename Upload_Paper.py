@@ -200,7 +200,6 @@ def parse_pdf(pdf, _recipe) -> Document:
     parsed_doc_filename = os.path.join(
         PARSED_PAPER_FOLDER, os.path.basename(pdf.replace("pdf", "json"))
     )
-    st.write(parsed_doc_filename)
     if os.path.exists(parsed_doc_filename):
         with st.status("Paper has already been parsed! Using cached version...") as status:
             try:
